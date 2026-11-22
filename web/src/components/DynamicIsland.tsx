@@ -4,29 +4,19 @@ import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { StockLogo } from "./StockLogo";
-import { stockBy } from "@/lib/stocks";
+import { STOCKS, stockBy } from "@/lib/stocks";
+import { usePrices } from "@/lib/usePrices";
 
 /**
  * A "dynamic island" style stock ticker. A black pill cycles through stocks
  * with rolling digits and a sparkline, and tapping it morphs it into a price
- * board with a spring animation.
- * DEMO: prices follow a random walk around demo prices and are not market data.
+ * board with a spring animation. Prices are live Chainlink feeds on Base.
  */
 
-const LIST = ["AAPL", "NVDA", "TSLA", "MSFT", "AMZN", "COIN", "SPY"];
-const POINTS = 28;
+const LIST = STOCKS.map((s) => s.ticker);
 const UP = "#4ADE80";
 const DOWN = "#F87171";
 
-function seeded(t: string) {
-  let s = [...t].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 2147483647, 7) || 1;
-  return () => (s = (s * 16807) % 2147483647) / 2147483647;
-}
-function initHistory(t: string) {
-  const r = seeded(t);
-  let v = stockBy(t).price * 0.992;
-  return Array.from({ length: POINTS }, () => (v *= 1 + (r() - 0.47) * 0.005));
-}
 const fmt = (n: number) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function Roll({ value }: { value: string }) {
@@ -66,25 +56,12 @@ function Change({ data, className = "" }: { data: number[]; className?: string }
 }
 
 export function DynamicIsland({ className = "" }: { className?: string }) {
-  const [hist, setHist] = useState<Record<string, number[]>>(() => Object.fromEntries(LIST.map((t) => [t, initHistory(t)])));
+  const book = usePrices();
+  const hist: Record<string, number[]> = Object.fromEntries(LIST.map((t) => [t, book.prices[t]?.history ?? [0, 0]]));
+  const anyLive = LIST.some((t) => book.prices[t]?.live);
   const [idx, setIdx] = useState(0);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
-  // price ticks
-  useEffect(() => {
-    const id = setInterval(() => {
-      setHist((h) => {
-        const next: Record<string, number[]> = {};
-        for (const t of LIST) {
-          const a = h[t];
-          next[t] = [...a.slice(1), a[a.length - 1] * (1 + (Math.random() - 0.495) * 0.004)];
-        }
-        return next;
-      });
-    }, 1500);
-    return () => clearInterval(id);
-  }, []);
 
   // cycle the compact pill
   useEffect(() => {
@@ -119,7 +96,7 @@ export function DynamicIsland({ className = "" }: { className?: string }) {
         className="absolute left-1/2 top-0 z-50 cursor-pointer overflow-hidden bg-black text-white shadow-[0_10px_30px_rgba(0,0,0,.35),inset_0_0_0_1px_rgba(255,255,255,.14)] outline-none focus-visible:ring-2 focus-visible:ring-honey"
         style={{ x: "-50%" }}
         initial={false}
-        animate={open ? { width: 340, height: 336, borderRadius: 28 } : { width: compactW, height: 44, borderRadius: 22 }}
+        animate={open ? { width: 340, height: 372, borderRadius: 28 } : { width: compactW, height: 44, borderRadius: 22 }}
         transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.9 }}
       >
         {/* liquid sheen around the edge */}
@@ -151,7 +128,7 @@ export function DynamicIsland({ className = "" }: { className?: string }) {
               transition={{ duration: 0.3, delay: 0.05 }}
             >
               <div className="mb-2 flex items-center justify-between">
-                <span className="flex items-center gap-2 text-sm font-bold"><span className="h-2 w-2 animate-pulse rounded-full" style={{ background: UP }} />Stock pulse</span>
+                <span className="flex items-center gap-2 text-sm font-bold"><span className={`h-2 w-2 rounded-full ${anyLive ? "animate-pulse" : ""}`} style={{ background: anyLive ? UP : "#9CA3AF" }} />{anyLive ? "Live prices" : "Market closed"}</span>
                 <button onClick={(e) => { e.stopPropagation(); setOpen(false); }} aria-label="Close prices" className="grid h-7 w-7 place-items-center rounded-full bg-white/10 hover:bg-white/20"><X size={15} /></button>
               </div>
               {LIST.map((tk) => (
@@ -165,7 +142,9 @@ export function DynamicIsland({ className = "" }: { className?: string }) {
                   </div>
                 </div>
               ))}
-              <p className="mt-1.5 text-center text-[11px] text-white/40">Demo prices, not live market data</p>
+              <p className="mt-1.5 text-center text-[11px] text-white/40">
+                {book.source === "chainlink" ? (anyLive ? "Live Chainlink prices on Base. Change over recent updates." : "Market closed. Last Chainlink prices on Base.") : "Loading live prices…"}
+              </p>
             </motion.div>
           )}
         </AnimatePresence>

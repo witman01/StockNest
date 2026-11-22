@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 const LINES: [string, string][] = [
   ["Give them stocks,", "not just presents."],
   ["One link.", "The whole family gives."],
-  ["Grandma picks Apple.", "Uncle picks the S&P 500."],
+  ["Grandma picks Apple.", "Uncle picks NVIDIA."],
   ["Every gift is a real share,", "with a message."],
   ["Their first portfolio,", "built by family."],
 ];

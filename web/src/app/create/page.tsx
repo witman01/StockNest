@@ -28,7 +28,7 @@ export default function CreatePage() {
   const [avatar, setAvatar] = useState<AvatarKind>("amelia");
   const [photo, setPhoto] = useState<string | undefined>();
   const [showPhoto, setShowPhoto] = useState(true);
-  const [picks, setPicks] = useState<string[]>(["SPY", "AAPL", "NVDA"]);
+  const [picks, setPicks] = useState<string[]>(["AAPL", "NVDA", "MSFT"]);
   const [goal, setGoal] = useState("5000");
   const [note, setNote] = useState("Help us give Amelia a head start. Gift her a piece of the companies shaping her future.");
   const [parentNames, setParentNames] = useState("");
@@ -146,7 +146,7 @@ export default function CreatePage() {
           {saving && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
           {saving ? "Creating your nest…" : "Create Stock Nest"}
         </Button>
-        <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-sm text-ink-3"><ShieldCheck size={15} />No personal details go onchain.</p>
+        <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-sm text-ink-3"><ShieldCheck size={15} />No personal details go onchain. Not available to US persons.</p>
       </Card>
 
       {/* live preview */}

@@ -4,7 +4,7 @@ import type { Gift } from "@/lib/nests";
 import { getRepo } from "@/lib/server/repo";
 import { rateLimited } from "@/lib/server/ratelimit";
 import { firstError, GiftInput } from "@/lib/server/validate";
-import { stockBy } from "@/lib/stocks";
+import { priceOf } from "@/lib/server/prices";
 
 /**
  * Record a stock gift.
@@ -23,8 +23,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (!parsed.success) return NextResponse.json({ error: firstError(parsed.error) }, { status: 400 });
   const g = parsed.data;
 
-  // Never trust client maths: price the gift on the server.
-  const price = stockBy(g.ticker).price;
+  // Never trust client maths: price the gift on the server from the live feed.
+  const price = await priceOf(g.ticker);
   const usd = g.mode === "buy" ? g.usd! : +(g.shares! * price).toFixed(2);
   const shares = g.mode === "buy" ? +(g.usd! / price).toFixed(6) : g.shares!;
 

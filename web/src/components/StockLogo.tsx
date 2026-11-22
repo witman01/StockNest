@@ -4,7 +4,7 @@ import { stockBy } from "@/lib/stocks";
 
 export function StockLogo({ ticker, size = 44, className }: { ticker: string; size?: number; className?: string }) {
   const s = stockBy(ticker);
-  const isIndex = ticker === "SPY" || ticker === "COIN";
+  const isIndex = false;
   return (
     <span
       className={clsx("grid shrink-0 place-items-center overflow-hidden rounded-full border border-line bg-white", className)}

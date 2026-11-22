@@ -33,8 +33,8 @@ export default function Home() {
             </span>
             <RotatingHeadline />
             <p className="mb-7 mt-4 max-w-[520px] text-lg leading-relaxed text-ink-2">
-              StockNest gives every child a Stock Nest the whole family can fill. Grandma picks Apple, an uncle picks the
-              S&amp;P 500, and each gift becomes a real tokenized share on Base, with a message attached.
+              StockNest gives every child a Stock Nest the whole family can fill. Grandma picks Apple, an uncle picks
+              NVIDIA, and each gift becomes a real tokenized share on Base, with a message attached.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button href="/create">Create a Stock Nest</Button>
@@ -109,7 +109,7 @@ export default function Home() {
           </div>
           <div className="grid gap-4 md:grid-cols-3 md:gap-6">
             {[
-              { n: 1, icon: Sprout, title: "Create a Stock Nest", body: "Add your child's name and photo, then choose the stocks family can gift, like the S&P 500, Apple or NVIDIA." },
+              { n: 1, icon: Sprout, title: "Create a Stock Nest", body: "Add your child's name and photo, then choose the stocks family can gift, like Apple, NVIDIA or Tesla." },
               { n: 2, icon: HeartHandshake, title: "Share one link", body: "Send it on WhatsApp, Telegram or by text. Everyone uses one page, with no wallet addresses or brokerage accounts." },
               { n: 3, icon: MessageCircleHeart, title: "Family gifts stocks", body: "They pick a stock and an amount, then add a message. USDC buys the tokenized share, which goes into the nest." },
             ].map(({ n, icon: Icon, title, body }) => (
@@ -154,7 +154,7 @@ export default function Home() {
                 { icon: Sprout, bg: "bg-forest-soft", t: "The gift is the stock", d: "Givers choose the company or index fund, so the child owns the real thing, not a voucher." },
                 { icon: MessageCircleHeart, bg: "bg-honey-soft", t: "Every share carries a message", d: "“Grandma gave you this Apple share on your 5th birthday.” It's a portfolio with a family story." },
                 { icon: ArrowRightLeft, bg: "bg-sky-soft", t: "Two ways to give", d: "Pay in USDC and we buy the stock, or send tokenized shares you already own." },
-                { icon: CalendarHeart, bg: "bg-sand", t: "Programmable stock gifts", d: "A share of the S&P 500 every birthday until 18. Scheduled gifts are coming soon." },
+                { icon: CalendarHeart, bg: "bg-sand", t: "Programmable stock gifts", d: "A share of Apple every birthday until 18. Scheduled gifts are coming soon." },
               ].map(({ icon: Icon, bg, t: title, d }) => (
                 <li key={title} className="flex gap-4">
                   <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-forest ${bg}`}><Icon size={20} /></span>

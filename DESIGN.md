@@ -96,7 +96,7 @@ The brand is anchored in **Forest `#0C513F`**: deep, calm, trustworthy and growi
 | `--error` / `--error-soft` | `#B3261E` / `#FBE3E1` | Failed / returned |
 
 ### Stock logos
-Stocks are identified by their **real company logo** on a white circle with a `--line` border (`<StockLogo>`; files live in `web/public/logos/`, sourced from Simple Icons and colored in each brand's own color). The S&P 500 index has no company, so it uses a StockNest-made Forest tile with a honey trend line. Logos identify a stock and never imply that the company endorses StockNest. Each stock also has a fixed **chart color** for allocation bars (see `web/src/lib/stocks.ts`).
+Stocks are identified by their **real company logo** on a white circle with a `--line` border (`<StockLogo>`; files live in `web/public/logos/`, sourced from Simple Icons and colored in each brand's own color). The list matches the Coinbase tokenized stocks (B20) live on Base: Apple, NVIDIA, Microsoft, Amazon, Alphabet, Meta, Tesla and Strategy. Logos identify a stock and never imply that the company endorses StockNest. Each stock also has a fixed **chart color** for allocation bars (see `web/src/lib/stocks.ts`).
 
 ### Rules
 - Forest is the **one primary action** color. Text on Forest is always white.

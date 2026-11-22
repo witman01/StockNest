@@ -45,7 +45,7 @@ export function SiteFooter() {
       </div>
       <div className="mx-auto mt-8 flex max-w-[1160px] flex-wrap justify-between gap-2 border-t border-line px-4 pt-6 text-xs md:px-8">
         <span>Made for the Base Stocks Maxxing hackathon</span>
-        <span>Demo build: transactions are simulated and prices are not live.</span>
+        <span>Live prices from Chainlink on Base. Stock purchases are simulated on testnet. Not available to US persons.</span>
       </div>
     </footer>
   );

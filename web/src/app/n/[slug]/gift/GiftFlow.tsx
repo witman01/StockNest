@@ -12,6 +12,7 @@ import type { Gift, GiftMode, PublicNest } from "@/lib/nests";
 import { sendGift } from "@/lib/api";
 import { DEMO_WALLET, STOCKS, stockBy } from "@/lib/stocks";
 import { shares as fmtShares, usd } from "@/lib/format";
+import { priceFor, usePrices } from "@/lib/usePrices";
 
 const OCCASIONS = ["🎂 Birthday", "🎄 Holiday", "🎓 Graduation", "💛 Just because"];
 const AMOUNTS = [10, 25, 50, 100];
@@ -37,6 +38,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [sent, setSent] = useState<Gift | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [eligible, setEligible] = useState(false);
   const [tracked, setTracked] = useState(0);
 
   // Order stocks: parents' picks first.
@@ -45,15 +47,17 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
     return [...STOCKS].sort((a, b) => Number(picks.includes(b.ticker)) - Number(picks.includes(a.ticker)));
   }, [nest]);
 
-  useEffect(() => { if (nest && !ticker) setTicker(nest.picks[0] ?? "SPY"); }, [nest, ticker]);
+  useEffect(() => { if (nest && !ticker) setTicker(nest.picks[0] ?? "AAPL"); }, [nest, ticker]);
 
-  const stock = stockBy(ticker || nest.picks[0] || "SPY");
+  const stock = stockBy(ticker || nest.picks[0] || "AAPL");
+  const book = usePrices();
+  const livePrice = priceFor(book, stock.ticker);
   const owned = DEMO_WALLET[stock.ticker] ?? 0;
   const own = parseFloat(ownShares) || 0;
-  const giftShares = mode === "buy" ? amount / stock.price : own;
-  const giftUsd = mode === "buy" ? amount : own * stock.price;
+  const giftShares = mode === "buy" ? amount / livePrice : own;
+  const giftUsd = mode === "buy" ? amount : own * livePrice;
   const amountOk = mode === "buy" ? amount >= 1 && amount <= 10000 : own > 0 && own <= owned;
-  const canNext = step === 1 ? !!ticker && (mode === "buy" || owned > 0) : step === 2 ? amountOk : true;
+  const canNext = step === 1 ? !!ticker && (mode === "buy" || owned > 0) : step === 2 ? amountOk : step === 4 ? eligible : true;
   const kid = nest.childName;
 
   function selectMode(m: GiftMode) {
@@ -148,14 +152,14 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                         <span className="min-w-0">
                           <b className="block text-[15px]">{s.name}</b>
                           <small className="num text-[13px] text-ink-2">
-                            {mode === "own" ? (held ? <>You hold {fmtShares(held)}, <span className="text-forest">✓ eligible</span></> : "Not in your wallet") : <>{s.ticker}, {usd(s.price, 2)}</>}
+                            {mode === "own" ? (held ? <>You hold {fmtShares(held)}, <span className="text-forest">✓ eligible</span></> : "Not in your wallet") : <>{s.ticker}, {usd(priceFor(book, s.ticker), 2)}</>}
                           </small>
                         </span>
                       </button>
                     );
                   })}
                 </div>
-                {mode === "buy" && <p className="mt-3 text-xs text-ink-3">Demo prices. Live quotes will come from the execution route.</p>}
+                {mode === "buy" && <p className="mt-3 text-xs text-ink-3">{book.source === "chainlink" ? "Live prices from Chainlink on Base." : "Showing last known prices."}{book.source === "chainlink" && !book.prices[stock.ticker]?.live ? " The US market is closed, so prices are from the last close." : ""}</p>}
               </div>
             )}
 
@@ -191,7 +195,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                   <StockLogo ticker={stock.ticker} size={40} />
                   <div>
                     <b className="num font-display text-xl">{mode === "buy" ? `≈ ${fmtShares(giftShares)} shares` : `≈ ${usd(giftUsd, 2)} today`}</b>
-                    <div className="num text-sm text-ink-3">{mode === "buy" ? `of ${stock.name} at ${usd(stock.price, 2)}, fractional shares OK` : `${fmtShares(giftShares)} ${stock.ticker} at ${usd(stock.price, 2)}`}</div>
+                    <div className="num text-sm text-ink-3">{mode === "buy" ? `of ${stock.name} at ${usd(livePrice, 2)}, fractional shares OK` : `${fmtShares(giftShares)} ${stock.ticker} at ${usd(livePrice, 2)}`}</div>
                   </div>
                 </div>
                 <p className={clsx("mt-2.5 text-sm", amountOk ? "text-ink-3" : "text-error")}>
@@ -257,6 +261,10 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                     <div key={i} className="flex justify-between gap-4 border-b border-line px-4 py-3 last:border-0"><span className="shrink-0 text-ink-2">{k}</span><span className="num text-right font-semibold">{v}</span></div>
                   ))}
                 </div>
+                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-line p-3.5 text-sm">
+                  <input type="checkbox" checked={eligible} onChange={(e) => setEligible(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[#0C513F]" />
+                  <span><b>I&apos;m not a US person and I&apos;m 18 or older.</b> <span className="text-ink-2">Tokenized stocks are only offered outside the United States.</span></span>
+                </label>
                 <div className="mt-4 flex gap-2.5 rounded-2xl bg-sky-soft p-3.5 text-sm text-ink-2">
                   <Info size={18} className="mt-0.5 shrink-0 text-forest" />
                   <span>{mode === "buy"
