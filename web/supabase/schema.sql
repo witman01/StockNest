@@ -16,7 +16,10 @@ create table if not exists public.nests (
   picks              text[] not null,
   show_amounts       boolean not null default true,
   manage_token_hash  text,
-  created_at         timestamptz not null default now()
+  created_at         timestamptz not null default now(),
+  chain_nest_id      integer,
+  vault              text,
+  guardian           text
 );
 
 create table if not exists public.gifts (
@@ -35,6 +38,7 @@ create table if not exists public.gifts (
   created_at  timestamptz not null default now()
 );
 
+create unique index if not exists gifts_tx_hash_idx on public.gifts (tx_hash) where tx_hash like '0x%' and length(tx_hash) = 66;
 create index if not exists gifts_nest_created_idx on public.gifts (nest_slug, created_at desc);
 
 alter table public.nests enable row level security;
@@ -45,3 +49,6 @@ alter table public.gifts enable row level security;
 insert into storage.buckets (id, name, public)
 values ('child-photos', 'child-photos', true)
 on conflict (id) do nothing;
+
+-- Upgrading an existing database:
+-- alter table public.nests add column if not exists chain_nest_id integer, add column if not exists vault text, add column if not exists guardian text;

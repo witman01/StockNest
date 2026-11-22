@@ -2,6 +2,14 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { SEED_NESTS, type Gift, type Nest } from "@/lib/nests";
+import { seedChainInfo } from "./onchain";
+
+/** Attach onchain ids for demo nests that the deploy script created. */
+function withChain<T extends NestRecord | null>(n: T): T {
+  if (!n || n.chainNestId) return n;
+  const info = seedChainInfo(n.slug);
+  return info ? { ...n, ...info } : n;
+}
 
 /** A nest as stored on the server: the public shape plus the owner's key hash. */
 export type NestRecord = Nest & { manageTokenHash?: string };
@@ -57,7 +65,7 @@ class FileRepo implements Repo {
     return run;
   }
 
-  async getNest(slug: string) { return (await this.read()).nests.find((n) => n.slug === slug) ?? null; }
+  async getNest(slug: string) { return withChain((await this.read()).nests.find((n) => n.slug === slug) ?? null); }
   async slugExists(slug: string) { return !!(await this.getNest(slug)); }
   createNest(nest: NestRecord) { return this.mutate((db) => { db.nests.unshift(nest); }); }
   updateNest(slug: string, patch: Partial<Nest>) {
@@ -92,6 +100,7 @@ type NestRow = {
   slug: string; child_name: string; nest_name: string; avatar: Nest["avatar"]; photo_url: string | null;
   show_photo: boolean; note: string; parent_names: string; milestone: string | null; goal: number | null;
   picks: string[]; show_amounts: boolean; manage_token_hash: string | null; created_at: string;
+  chain_nest_id: number | null; vault: string | null; guardian: string | null;
 };
 type GiftRow = {
   id: string; nest_slug: string; giver: string; is_private: boolean; ticker: string; shares: number; usd: number;
@@ -102,6 +111,7 @@ const toNestRow = (n: NestRecord): NestRow => ({
   slug: n.slug, child_name: n.childName, nest_name: n.nestName, avatar: n.avatar, photo_url: n.photo ?? null,
   show_photo: n.showPhoto, note: n.note, parent_names: n.parentNames, milestone: n.milestone ?? null, goal: n.goal ?? null,
   picks: n.picks, show_amounts: n.showAmounts, manage_token_hash: n.manageTokenHash ?? null, created_at: n.createdAt,
+  chain_nest_id: n.chainNestId ?? null, vault: n.vault ?? null, guardian: n.guardian ?? null,
 });
 const toGiftRow = (slug: string, g: Gift): GiftRow => ({
   id: g.id, nest_slug: slug, giver: g.from, is_private: g.isPrivate, ticker: g.ticker, shares: g.shares, usd: g.usd,
@@ -112,6 +122,7 @@ const fromRows = (r: NestRow, gifts: GiftRow[]): NestRecord => ({
   showPhoto: r.show_photo, note: r.note, parentNames: r.parent_names, milestone: r.milestone ?? undefined,
   goal: r.goal ?? undefined, picks: r.picks, showAmounts: r.show_amounts, manageTokenHash: r.manage_token_hash ?? undefined,
   createdAt: r.created_at,
+  chainNestId: r.chain_nest_id ?? undefined, vault: r.vault ?? undefined, guardian: r.guardian ?? undefined,
   gifts: gifts.map((g) => ({
     id: g.id, from: g.giver, isPrivate: g.is_private, ticker: g.ticker, shares: Number(g.shares), usd: Number(g.usd),
     occasion: g.occasion, message: g.message, mode: g.mode, status: g.status, txHash: g.tx_hash ?? undefined, createdAt: g.created_at,
@@ -143,7 +154,7 @@ class SupabaseRepo implements Repo {
     if (!n) return null;
     const { data: gifts, error: e2 } = await this.db.from("gifts").select("*").eq("nest_slug", slug).order("created_at", { ascending: false });
     if (e2) throw e2;
-    return fromRows(n, (gifts ?? []) as GiftRow[]);
+    return withChain(fromRows(n, (gifts ?? []) as GiftRow[]));
   }
   async slugExists(slug: string) {
     const { count } = await this.db.from("nests").select("slug", { count: "exact", head: true }).eq("slug", slug);
@@ -161,6 +172,9 @@ class SupabaseRepo implements Repo {
     if (patch.picks) row.picks = patch.picks;
     if (patch.showAmounts !== undefined) row.show_amounts = patch.showAmounts;
     if (patch.showPhoto !== undefined) row.show_photo = patch.showPhoto;
+    if (patch.chainNestId !== undefined) row.chain_nest_id = patch.chainNestId;
+    if (patch.vault !== undefined) row.vault = patch.vault;
+    if (patch.guardian !== undefined) row.guardian = patch.guardian;
     const { error } = await this.db.from("nests").update(row).eq("slug", slug);
     if (error) throw error;
   }

@@ -40,6 +40,10 @@ export type Nest = {
   showAmounts: boolean;
   gifts: Gift[];
   createdAt: string;
+  /** Onchain nest (StockNest contract) once the guardian has created it. */
+  chainNestId?: number;
+  vault?: string;
+  guardian?: string;
 };
 
 /* ------------------------------------------------------------------ */

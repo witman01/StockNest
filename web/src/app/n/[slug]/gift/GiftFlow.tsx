@@ -10,6 +10,8 @@ import { StockLogo } from "@/components/StockLogo";
 import { Button, Card, Chip, Toggle } from "@/components/ui";
 import type { Gift, GiftMode, PublicNest } from "@/lib/nests";
 import { sendGift } from "@/lib/api";
+import { isRealTx, networkName, onchainEnabled, RESTRICTED, txUrl } from "@/lib/chain";
+import { connectWallet, hasBrowserWallet, sendStockGift, walletError } from "@/lib/wallet";
 import { DEMO_WALLET, STOCKS, stockBy } from "@/lib/stocks";
 import { shares as fmtShares, usd } from "@/lib/format";
 import { priceFor, usePrices } from "@/lib/usePrices";
@@ -35,6 +37,9 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
   const [occasion, setOccasion] = useState(OCCASIONS[0]);
   const [message, setMessage] = useState("");
   const [pay, setPay] = useState<Pay>("email");
+  const [stepMsg, setStepMsg] = useState("");
+  const [browserWallet, setBrowserWallet] = useState(false);
+  useEffect(() => setBrowserWallet(hasBrowserWallet()), []);
   const [phase, setPhase] = useState<Phase>("idle");
   const [sent, setSent] = useState<Gift | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +70,37 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
     if (m === "own" && !DEMO_WALLET[ticker]) setTicker(Object.keys(DEMO_WALLET)[0]);
   }
 
+  const onchain = onchainEnabled && !!nest.chainNestId && mode === "buy";
+
+  async function confirmOnchain() {
+    setError(null);
+    setPhase("signing");
+    setStepMsg("Opening your wallet…");
+    try {
+      const wallet = await connectWallet(pay === "email" ? "smart" : "injected");
+      setStepMsg("Getting a live price…");
+      const qr = await fetch("/api/quote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticker: stock.ticker }) });
+      const quote = await qr.json();
+      if (!qr.ok) throw new Error(quote.error || "Couldn't get a price right now.");
+      setPhase("executing");
+      const msg = message.trim();
+      const txHash = await sendStockGift({ wallet, nestId: nest.chainNestId!, usdAmount: amount, quote, message: msg, onStep: setStepMsg });
+      setStepMsg("Recording your gift…");
+      const { gift } = await sendGift(nest.slug, { mode: "buy", ticker: stock.ticker, txHash, from: name.trim(), isPrivate, occasion, message: msg });
+      setTracked(0);
+      setSent(gift);
+      [1, 2, 3].forEach((n) => setTimeout(() => setTracked(n), 400 + n * 550));
+    } catch (e) {
+      const m = e instanceof Error && !("code" in e) && !("shortMessage" in e) ? e.message : walletError(e);
+      setError(m);
+    } finally {
+      setPhase("idle");
+      setStepMsg("");
+    }
+  }
+
   async function confirm() {
+    if (onchain) return confirmOnchain();
     setError(null);
     setPhase("signing");
     // DEMO: the wallet signature is simulated. The gift itself is saved by the server.
@@ -94,11 +129,17 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
   const next = () => { if (step < 4) { setStep(step + 1); window.scrollTo({ top: 0, behavior: "smooth" }); } else confirm(); };
   const back = () => (step > 1 ? setStep(step - 1) : router.push(`/n/${nest.slug}`));
   const nextLabel = step < 4 ? "Continue"
+    : phase !== "idle" && stepMsg ? stepMsg
     : phase === "signing" ? "Waiting for your confirmation…"
     : phase === "executing" ? (mode === "buy" ? `Buying ${stock.name} on Base…` : "Sending on Base…")
     : mode === "buy" ? `Confirm & gift ${usd(amount, amount % 1 ? 2 : 0)} of ${stock.name}` : `Send ${fmtShares(own)} ${stock.ticker} to ${kid}`;
 
-  const trackerRows = mode === "buy"
+  const returned = sent?.status === "returned";
+  const trackerRows = returned
+    ? [{ label: "USDC received", meta: usd(sent?.usd ?? 0, 2) }, { label: `${stock.name} isn't allowed for this nest yet`, meta: "policy check" }, { label: "USDC refunded to you", meta: usd(sent?.usd ?? 0, 2) }]
+    : sent && isRealTx(sent.txHash)
+    ? [{ label: "USDC received", meta: usd(sent.usd, 2) }, { label: `${stock.name} purchased`, meta: `${fmtShares(sent.shares)} ${stock.ticker}` }, { label: `Delivered to ${kid}'s nest`, meta: networkName }]
+    : mode === "buy"
     ? [{ label: "USDC received", meta: usd(giftUsd, 2) }, { label: `${stock.name} purchased`, meta: `${fmtShares(giftShares)} ${stock.ticker}` }, { label: `Delivered to ${kid}'s nest`, meta: "Base" }]
     : [{ label: "Eligibility checked", meta: "✓ allowed" }, { label: `${stock.ticker} sent`, meta: `${fmtShares(giftShares)} ${stock.ticker}` }, { label: `Delivered to ${kid}'s nest`, meta: "Base" }];
 
@@ -152,7 +193,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                         <span className="min-w-0">
                           <b className="block text-[15px]">{s.name}</b>
                           <small className="num text-[13px] text-ink-2">
-                            {mode === "own" ? (held ? <>You hold {fmtShares(held)}, <span className="text-forest">✓ eligible</span></> : "Not in your wallet") : <>{s.ticker}, {usd(priceFor(book, s.ticker), 2)}</>}
+                            {mode === "own" ? (held ? <>You hold {fmtShares(held)}, <span className="text-forest">✓ eligible</span></> : "Not in your wallet") : <>{s.ticker}, {usd(priceFor(book, s.ticker), 2)}{onchain && RESTRICTED.has(s.ticker) ? <span className="text-pending">, restricted</span> : null}</>}
                           </small>
                         </span>
                       </button>
@@ -232,10 +273,10 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                     <p className="mb-2 mt-5 text-sm font-semibold">Pay with</p>
                     <div className="grid gap-2.5">
                       {[
-                        { id: "email" as const, icon: Mail, t: "Continue with email", d: "New here? We'll set up a secure wallet for you. No seed phrase needed.", bg: "bg-forest-soft" },
-                        { id: "wallet" as const, icon: Wallet, t: "Connect a wallet", d: "Coinbase Wallet, MetaMask or another Base wallet", bg: "bg-onchain-soft" },
-                      ].map(({ id, icon: Icon, t, d, bg }) => (
-                        <button key={id} onClick={() => setPay(id)} className={clsx("flex items-center gap-3.5 rounded-2xl border-2 p-3.5 text-left transition", pay === id ? "border-forest bg-forest-soft" : "border-line bg-paper")}>
+                        { id: "email" as const, icon: Mail, t: "Continue with email or passkey", d: "Coinbase Smart Wallet. New here? It takes seconds, with no seed phrase.", bg: "bg-forest-soft", off: false },
+                        { id: "wallet" as const, icon: Wallet, t: "Connect a browser wallet", d: browserWallet ? "MetaMask, Coinbase Wallet extension or another wallet" : "No browser wallet found on this device", bg: "bg-onchain-soft", off: !browserWallet },
+                      ].map(({ id, icon: Icon, t, d, bg, off }) => (
+                        <button key={id} disabled={off} onClick={() => setPay(id)} className={clsx("flex items-center gap-3.5 rounded-2xl border-2 p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-50", pay === id ? "border-forest bg-forest-soft" : "border-line bg-paper")}>
                           <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-forest ${bg}`}><Icon size={19} /></span>
                           <span><b className="block">{t}</b><small className="text-sm text-ink-2">{d}</small></span>
                         </button>
@@ -256,7 +297,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                     ["Route", mode === "buy" ? "USDC → swap → nest" : "Direct transfer → nest"],
                     ["From", isPrivate ? "Private gift" : name.trim() || "Someone who loves you"],
                     ["Occasion", occasion],
-                    ["Network", <Chip key="n" tone="base" xs>Base Sepolia testnet</Chip>],
+                    ["Network", <Chip key="n" tone="base" xs>{onchain ? networkName : "Simulated"}</Chip>],
                   ].map(([k, v], i) => (
                     <div key={i} className="flex justify-between gap-4 border-b border-line px-4 py-3 last:border-0"><span className="shrink-0 text-ink-2">{k}</span><span className="num text-right font-semibold">{v}</span></div>
                   ))}
@@ -267,9 +308,11 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                 </label>
                 <div className="mt-4 flex gap-2.5 rounded-2xl bg-sky-soft p-3.5 text-sm text-ink-2">
                   <Info size={18} className="mt-0.5 shrink-0 text-forest" />
-                  <span>{mode === "buy"
-                    ? `The final number of shares depends on the price when the order fills (max 1% slippage). If the stock can't be bought or delivered to ${kid}'s nest, your USDC is refunded automatically.`
-                    : `The token's transfer policy is checked before sending. Shares go to ${kid}'s guardian-managed nest, not a child's personal wallet.`} This is a demo, so no real money moves.</span>
+                  <span>{onchain
+                    ? <>This is a real transaction on {networkName} (testnet), priced live from Chainlink. If you don&apos;t have test USDC, your wallet gets 1,000 free in the same step. If {stock.name} can&apos;t be delivered to {kid}&apos;s nest, your USDC is refunded automatically.{!process.env.NEXT_PUBLIC_PAYMASTER_URL && <> Your wallet needs a little test ETH for gas (<a className="underline" href="https://portal.cdp.coinbase.com/products/faucet" target="_blank" rel="noopener noreferrer">free faucet</a>).</>}</>
+                    : mode === "buy"
+                    ? `Shares are priced live. If the stock can't be delivered to ${kid}'s nest, your USDC is refunded automatically. This nest isn't onchain yet, so this gift is simulated.`
+                    : `The token's transfer policy is checked before sending. Shares go to ${kid}'s guardian-managed nest, not a child's personal wallet. Gifting shares you own is simulated in this demo.`}</span>
                 </div>
               </div>
             )}
@@ -287,14 +330,20 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
         onClose={() => { router.push(`/n/${nest.slug}`); router.refresh(); }}
         steps={["Stock", "Note", "Gift"]}
         title={<>Give today.<br />Grow tomorrow.</>}
-        subtitle={<>{sent && !sent.isPrivate && name.trim() ? `Thank you, ${name.trim()}! ` : ""}Your <b>{fmtShares(giftShares)} {stock.name}</b> is on its way to {kid}&apos;s Stock Nest.</>}
+        subtitle={returned
+          ? <>{stock.name} can&apos;t be delivered to {kid}&apos;s nest yet because of its transfer rules, so your test USDC was refunded automatically.</>
+          : <>{sent && !sent.isPrivate && name.trim() ? `Thank you, ${name.trim()}! ` : ""}Your <b>{fmtShares(sent?.shares || giftShares)} {stock.name}</b> {sent && isRealTx(sent.txHash) ? "is now in" : "is on its way to"} {kid}&apos;s Stock Nest.</>}
         shareUrl={typeof window !== "undefined" ? `${window.location.origin}/n/${nest.slug}` : ""}
         shareTitle={`Gift ${kid} a stock 🎁`}
         shareLine={`Help spread the word and share ${kid}'s nest`}
         secondary={{ label: `View ${kid}'s gift page`, href: `/n/${nest.slug}` }}
       >
         <DeliveryTracker rows={trackerRows} doneCount={tracked} />
-        <div className="mt-2 text-center"><Chip tone="base">Receipt {sent?.txHash}</Chip></div>
+        <div className="mt-2 text-center">
+          {sent && txUrl(sent.txHash ?? "")
+            ? <a href={txUrl(sent.txHash!)!} target="_blank" rel="noopener noreferrer"><Chip tone="base">View receipt on BaseScan ↗</Chip></a>
+            : <Chip tone="base">Demo receipt (simulated)</Chip>}
+        </div>
       </Celebration>
     </div>
   );

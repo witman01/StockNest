@@ -5,11 +5,13 @@ import { ArrowLeft, Copy, Download, ExternalLink, Lock, Share2 } from "lucide-re
 import Link from "next/link";
 import { use, useEffect, useMemo, useState } from "react";
 import { ChildAvatar } from "@/components/ChildAvatar";
+import { OnchainCard } from "@/components/OnchainCard";
 import { StockLogo } from "@/components/StockLogo";
 import { AllocationBar, Button, Card, Chip, SeriesDot, StatusChip, Toggle, shareLink, useToast } from "@/components/ui";
 import { fetchExampleNests, fetchMyNests, getOwned, updateNest } from "@/lib/api";
 import { nestTotals, SEED_NESTS, type Gift, type Nest } from "@/lib/nests";
 import { stockBy } from "@/lib/stocks";
+import { txUrl } from "@/lib/chain";
 import { shares, shortDate, usd } from "@/lib/format";
 
 type Filter = "all" | "delivered" | "progress" | "returned";
@@ -173,7 +175,7 @@ function Tracker({ nest, token, toast, toastNode, onSaved }: { nest: Nest; token
                   </div>
                   <div className="num mt-0.5 text-sm text-ink-2">{shares(g.shares)} {stockBy(g.ticker).name}{g.mode === "own" ? ", sent from their own shares" : ""}</div>
                   {g.message && <p className="font-display mt-1 break-words italic text-ink-2">&ldquo;{g.message}&rdquo;</p>}
-                  <div className="mt-1 text-xs text-ink-3">{shortDate(g.createdAt)}{g.txHash ? `, receipt ${g.txHash}` : ""}</div>
+                  <div className="mt-1 text-xs text-ink-3">{shortDate(g.createdAt)}{txUrl(g.txHash ?? "") ? <>, <a className="text-forest underline" href={txUrl(g.txHash!)!} target="_blank" rel="noopener noreferrer">receipt on BaseScan</a></> : g.txHash ? ", simulated" : ""}</div>
                 </div>
                 <div className="text-right"><b className="num">{usd(g.usd)}</b><div className="mt-0.5"><StatusChip status={g.status} /></div></div>
               </div>
@@ -195,6 +197,8 @@ function Tracker({ nest, token, toast, toastNode, onSaved }: { nest: Nest; token
               </div>
             ))}
           </Card>
+
+          <OnchainCard nest={nest} token={token} onLinked={onSaved} />
 
           <Settings nest={nest} token={token} toast={toast} onSaved={onSaved} />
 

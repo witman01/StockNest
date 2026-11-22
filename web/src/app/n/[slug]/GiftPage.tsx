@@ -6,6 +6,7 @@ import { StockLogo } from "@/components/StockLogo";
 import { AllocationBar, Button, Card, Chip, ProgressRing, SeriesDot, shareLink, useToast } from "@/components/ui";
 import type { PublicNest } from "@/lib/nests";
 import { stockBy } from "@/lib/stocks";
+import { addressUrl, txUrl } from "@/lib/chain";
 import { shares, shortDate, usd } from "@/lib/format";
 
 const AV_COLORS = ["#0C513F", "#4E8F86", "#B7834F", "#3E5A73", "#8A948F", "#6B4226"];
@@ -48,7 +49,7 @@ export function GiftPage({ nest }: { nest: PublicNest }) {
 
       {t.holdings.length > 0 && (
         <>
-          <div className="mx-1 mb-3 mt-8 flex items-center justify-between"><h2 className="font-display text-[26px] font-semibold">{nest.childName}&apos;s stocks</h2><Chip tone="base">Held on Base</Chip></div>
+          <div className="mx-1 mb-3 mt-8 flex items-center justify-between"><h2 className="font-display text-[26px] font-semibold">{nest.childName}&apos;s stocks</h2>{nest.vault && addressUrl(nest.vault) ? <a href={addressUrl(nest.vault)!} target="_blank" rel="noopener noreferrer"><Chip tone="base">Vault on BaseScan ↗</Chip></a> : <Chip tone="base">Held on Base</Chip>}</div>
           <Card className="px-5 py-3">
             <AllocationBar holdings={t.holdings} showValues={nest.showAmounts} className="mb-1.5 mt-2" />
             {t.holdings.map((h) => (
@@ -89,7 +90,7 @@ export function GiftPage({ nest }: { nest: PublicNest }) {
                 {g.message && <p className="font-display my-1.5 break-words text-[17px] italic">&ldquo;{g.message}&rdquo;</p>}
                 <div className="flex flex-wrap items-center gap-3 text-[13px] text-ink-3">
                   <span>{shortDate(g.createdAt)}</span>
-                  {g.status === "buying" ? <Chip tone="pending" xs>Buying stock</Chip> : g.status === "usdc_received" ? <Chip xs>USDC received</Chip> : <Chip tone="base" xs>Receipt</Chip>}
+                  {g.status === "buying" ? <Chip tone="pending" xs>Buying stock</Chip> : g.status === "usdc_received" ? <Chip xs>USDC received</Chip> : txUrl(g.txHash ?? "") ? <a href={txUrl(g.txHash!)!} target="_blank" rel="noopener noreferrer"><Chip tone="base" xs>Receipt ↗</Chip></a> : <Chip xs>Simulated</Chip>}
                 </div>
               </div>
             </div>

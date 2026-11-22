@@ -5,6 +5,8 @@ import { getRepo } from "@/lib/server/repo";
 import { rateLimited } from "@/lib/server/ratelimit";
 import { firstError, GiftInput } from "@/lib/server/validate";
 import { priceOf } from "@/lib/server/prices";
+import { memoHashOf, verifyGiftTx } from "@/lib/server/onchain";
+import type { Hex } from "viem";
 
 /**
  * Record a stock gift.
@@ -23,7 +25,36 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (!parsed.success) return NextResponse.json({ error: firstError(parsed.error) }, { status: 400 });
   const g = parsed.data;
 
-  // Never trust client maths: price the gift on the server from the live feed.
+  // Onchain gift: trust only what the transaction proves.
+  if (g.txHash) {
+    if (!nest.chainNestId) return NextResponse.json({ error: "This nest isn't onchain yet." }, { status: 400 });
+    if (nest.gifts.some((x) => x.txHash?.toLowerCase() === g.txHash!.toLowerCase())) {
+      return NextResponse.json({ error: "This gift is already recorded." }, { status: 409 });
+    }
+    let v;
+    try { v = await verifyGiftTx(g.txHash as Hex); }
+    catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : "Couldn't verify the transaction." }, { status: 400 }); }
+    if (v.nestId !== nest.chainNestId) return NextResponse.json({ error: "That gift went to a different nest." }, { status: 400 });
+    if (v.memoHash !== memoHashOf(g.message)) return NextResponse.json({ error: "The message doesn't match the onchain gift." }, { status: 400 });
+    const gift: Gift = {
+      id: randomBytes(6).toString("hex"),
+      from: g.from || "Someone who loves you",
+      isPrivate: g.isPrivate,
+      ticker: v.ticker,
+      shares: +v.shares.toFixed(6),
+      usd: +v.usd.toFixed(2),
+      occasion: g.occasion,
+      message: g.message,
+      mode: "buy",
+      status: v.status,
+      txHash: v.txHash,
+      createdAt: new Date().toISOString(),
+    };
+    await repo.addGift(slug, gift);
+    return NextResponse.json({ gift }, { status: 201 });
+  }
+
+  // Simulated gift (nests that aren't onchain yet): price it on the server from the live feed.
   const price = await priceOf(g.ticker);
   const usd = g.mode === "buy" ? g.usd! : +(g.shares! * price).toFixed(2);
   const shares = g.mode === "buy" ? +(g.usd! / price).toFixed(6) : g.shares!;

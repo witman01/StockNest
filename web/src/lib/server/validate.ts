@@ -28,7 +28,9 @@ export const GiftInput = z.object({
   isPrivate: z.boolean().default(false),
   occasion: clean(30).min(1),
   message: clean(240).default(""),
-}).refine((g) => (g.mode === "buy" ? g.usd !== undefined : g.shares !== undefined), { message: "Amount is required." });
+  /** Onchain gift: the server verifies this transaction instead of trusting the amounts. */
+  txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/).optional(),
+}).refine((g) => g.txHash || (g.mode === "buy" ? g.usd !== undefined : g.shares !== undefined), { message: "Amount is required." });
 
 export const UpdateNestInput = z.object({
   nestName: clean(40).min(1).optional(),

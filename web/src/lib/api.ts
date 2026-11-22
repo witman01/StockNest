@@ -40,7 +40,7 @@ export type CreateNestBody = {
 };
 export const createNest = (body: CreateNestBody) => call<{ slug: string; manageToken: string }>("/api/nests", json("POST", body));
 
-export type GiftBody = { mode: GiftMode; ticker: string; usd?: number; shares?: number; from: string; isPrivate: boolean; occasion: string; message: string };
+export type GiftBody = { mode: GiftMode; ticker: string; usd?: number; shares?: number; from: string; isPrivate: boolean; occasion: string; message: string; txHash?: string };
 export const sendGift = (slug: string, body: GiftBody) => call<{ gift: Gift }>(`/api/nests/${encodeURIComponent(slug)}/gifts`, json("POST", body));
 
 export const fetchMyNests = (owned: Owned) => call<{ nests: Nest[] }>("/api/parent/nests", json("POST", { owned }));
