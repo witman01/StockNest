@@ -19,7 +19,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid transaction." }, { status: 400 });
   try {
-    const info = await verifyNestTx(parsed.data.txHash as Hex, slug);
+    const info = await verifyNestTx(parsed.data.txHash as Hex, slug, bearer(req)!);
     await repo.updateNest(slug, info);
     return NextResponse.json(info);
   } catch (e) {

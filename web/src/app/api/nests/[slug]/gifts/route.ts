@@ -57,6 +57,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     return NextResponse.json({ gift }, { status: 201 });
   }
 
+  // A real onchain nest only takes real gifts: no free simulated ones padding its total.
+  if (nest.chainNestId) {
+    return NextResponse.json({ error: "This nest takes real onchain gifts only. Please send it with your wallet." }, { status: 400 });
+  }
+
   // Simulated gift (nests that aren't onchain yet): price it on the server from the live feed.
   const price = await priceOf(g.ticker);
   const usd = g.mode === "buy" ? g.usd! : +(g.shares! * price).toFixed(2);

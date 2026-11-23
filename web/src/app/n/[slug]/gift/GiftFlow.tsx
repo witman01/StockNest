@@ -97,7 +97,8 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
     if (m === "own" && !DEMO_WALLET[ticker]) setTicker(Object.keys(DEMO_WALLET)[0]);
   }
 
-  const onchain = onchainEnabled && !!nest.chainNestId && mode === "buy";
+  const onchainNest = onchainEnabled && !!nest.chainNestId;
+  const onchain = onchainNest && mode === "buy";
   const claimWindow = WINDOWS.find((w) => w.id === windowId) ?? WINDOWS[0];
   const unlockDate = unlockOn ? new Date(`${unlockOn}T00:00:00`) : null;
   const startsAt = unlockDate && unlockDate.getTime() > Date.now() ? unlockDate : new Date();
@@ -216,8 +217,9 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                 <h2 className="font-display text-[26px] font-semibold leading-tight">Which stock would you like to gift {kid}?</h2>
                 <div className="my-4 grid grid-cols-2 rounded-full bg-sand p-1">
                   {(["buy", "own"] as const).map((m) => (
-                    <button key={m} onClick={() => selectMode(m)} className={clsx("rounded-full px-2 py-2.5 text-[15px] font-semibold transition", mode === m ? "bg-paper text-forest shadow-soft" : "text-ink-2")}>
-                      {m === "buy" ? "Buy with USDC" : "Gift stock I own"}
+                    <button key={m} onClick={() => selectMode(m)} disabled={m === "own" && onchainNest}
+                      className={clsx("rounded-full px-2 py-2.5 text-[15px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50", mode === m ? "bg-paper text-forest shadow-soft" : "text-ink-2")}>
+                      {m === "buy" ? "Buy with USDC" : onchainNest ? "Stock I own (soon)" : "Gift stock I own"}
                     </button>
                   ))}
                 </div>

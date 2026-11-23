@@ -39,7 +39,7 @@ export function OnchainCard({ nest, token, onLinked }: { nest: Nest; token: stri
     setError(null);
     try {
       const wallet = await connectWallet(kind);
-      const txHash = await createOnchainNest(wallet, nest.slug);
+      const txHash = await createOnchainNest(wallet, nest.slug, token);
       const res = await fetch(`/api/nests/${encodeURIComponent(nest.slug)}/chain`, {
         method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ txHash }),
       });

@@ -5,7 +5,7 @@ import {
   createPublicClient, createWalletClient, custom, encodeFunctionData, http, keccak256, numberToHex, parseUnits, toBytes,
   type Address, type EIP1193Provider, type Hex, type WalletClient,
 } from "viem";
-import { chain, networkName, rpcUrl, stockNestAbi, stockNestAddress, testUsdcAbi, usdcAddress } from "./chain";
+import { chain, nestKey, networkName, rpcUrl, stockNestAbi, stockNestAddress, testUsdcAbi, usdcAddress } from "./chain";
 
 export type WalletKind = "smart" | "injected";
 export type Connected = { kind: WalletKind; address: Address; client: WalletClient; provider: EIP1193Provider };
@@ -144,9 +144,9 @@ export async function sendStockGift(opts: {
 }
 
 /** Guardian creates the onchain nest (vault) for a slug. */
-export async function createOnchainNest(wallet: Connected, slug: string): Promise<Hex> {
+export async function createOnchainNest(wallet: Connected, slug: string, manageToken: string): Promise<Hex> {
   const hash = await wallet.client.writeContract({
-    account: wallet.address, chain, address: stockNestAddress, abi: stockNestAbi, functionName: "createNest", args: [keccak256(toBytes(slug))],
+    account: wallet.address, chain, address: stockNestAddress, abi: stockNestAbi, functionName: "createNest", args: [nestKey(slug, manageToken)],
   });
   await publicClient.waitForTransactionReceipt({ hash });
   return hash;

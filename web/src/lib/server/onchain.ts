@@ -1,6 +1,6 @@
 import { createPublicClient, decodeEventLog, encodeAbiParameters, http, keccak256, toBytes, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { chain, deployment, onchainEnabled, rpcUrl, stockNestAbi, stockNestAddress, tickerForToken, tokenAddress } from "@/lib/chain";
+import { chain, deployment, nestKey, onchainEnabled, rpcUrl, stockNestAbi, stockNestAddress, tickerForToken, tokenAddress } from "@/lib/chain";
 
 /** Server-side chain access: signs price quotes and verifies gift/nest transactions. */
 
@@ -92,10 +92,10 @@ export async function readGiftSettlement(giftId: number, settleTx?: Hex): Promis
 }
 
 /** Verify a createNest transaction for this slug and return the onchain nest. */
-export async function verifyNestTx(txHash: Hex, slug: string) {
+export async function verifyNestTx(txHash: Hex, slug: string, manageToken: string) {
   const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 30_000 });
   if (receipt.status !== "success") throw new Error("That transaction failed onchain.");
-  const slugHash = keccak256(toBytes(slug));
+  const slugHash = nestKey(slug, manageToken);
   for (const log of receipt.logs) {
     if (log.address.toLowerCase() !== stockNestAddress.toLowerCase()) continue;
     try {

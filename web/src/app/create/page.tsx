@@ -66,7 +66,7 @@ export default function CreatePage() {
     const wallet = await connectWallet(hasBrowserWallet() ? "injected" : "smart");
     if (!d.chainNestId) {
       setProgress(`Creating ${childName.trim()}'s vault on ${networkName}…`);
-      const nestTx = await createOnchainNest(wallet, d.slug);
+      const nestTx = await createOnchainNest(wallet, d.slug, d.token);
       setProgress("Linking the vault…");
       const res = await fetch(`/api/nests/${encodeURIComponent(d.slug)}/chain`, {
         method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${d.token}` }, body: JSON.stringify({ txHash: nestTx }),
@@ -108,7 +108,7 @@ export default function CreatePage() {
     setVaultError(null);
     try {
       const wallet = await connectWallet(hasBrowserWallet() ? "injected" : "smart");
-      const txHash = await createOnchainNest(wallet, created.slug);
+      const txHash = await createOnchainNest(wallet, created.slug, created.token);
       const res = await fetch(`/api/nests/${encodeURIComponent(created.slug)}/chain`, {
         method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${created.token}` }, body: JSON.stringify({ txHash }),
       });

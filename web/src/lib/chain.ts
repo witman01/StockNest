@@ -1,4 +1,4 @@
-import { defineChain, parseAbi, type Address } from "viem";
+import { defineChain, keccak256, parseAbi, toBytes, type Address, type Hex } from "viem";
 import { baseSepolia } from "viem/chains";
 import localDeployment from "./deployments/local.json";
 import sepoliaDeployment from "./deployments/base-sepolia.json";
@@ -80,3 +80,9 @@ export const testB20Abi = parseAbi([
   "function canReceive(address) view returns (bool)",
   "function symbol() view returns (string)",
 ]);
+
+/**
+ * The nest's onchain key. Salted with the parent's private manage token so nobody
+ * can read a public slug and register its vault first (the contract rejects a taken key).
+ */
+export const nestKey = (slug: string, manageToken: string): Hex => keccak256(toBytes(`stocknest:${slug}:${manageToken}`));
