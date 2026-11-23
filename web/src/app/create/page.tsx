@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import { Check, Copy, Eye, Gift, ShieldCheck, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AVATAR_KINDS, ChildAvatar } from "@/components/ChildAvatar";
 import { Celebration } from "@/components/Celebration";
 import { PhotoUpload } from "@/components/PhotoUpload";
@@ -41,9 +42,26 @@ export default function CreatePage() {
   const [error, setError] = useState<string | null>(null);
   const [vault, setVault] = useState<"none" | "busy" | "done">("none");
   const [vaultError, setVaultError] = useState<string | null>(null);
+  // Optional: the parent's own first gift, chosen before the nest is created.
+  const [firstOn, setFirstOn] = useState(false);
+  const [firstPick, setFirstPick] = useState("");
+  const [firstAmount, setFirstAmount] = useState(50);
+  const [firstMsg, setFirstMsg] = useState("");
+  const firstTicker = picks.includes(firstPick) ? firstPick : picks[0] ?? "AAPL";
+  const router = useRouter();
 
-  async function setUpVault() {
+  const firstGiftHref = (slug: string) =>
+    `/n/${slug}/gift?from=parent&t=${firstTicker}&amt=${firstAmount}&msg=${encodeURIComponent(firstMsg.trim())}`;
+
+  /** Vault first (so the gift is real onchain), then straight into the prefilled gift. */
+  async function sendFirstGift() {
     if (!created) return;
+    if (onchainEnabled && vault !== "done" && !(await setUpVault())) return;
+    router.push(firstGiftHref(created.slug));
+  }
+
+  async function setUpVault(): Promise<boolean> {
+    if (!created) return false;
     setVault("busy");
     setVaultError(null);
     try {
@@ -55,9 +73,11 @@ export default function CreatePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't link the vault.");
       setVault("done");
+      return true;
     } catch (e) {
       setVault("none");
       setVaultError(e instanceof Error && !("code" in e) && !("shortMessage" in e) ? e.message : walletError(e));
+      return false;
     }
   }
 
@@ -167,10 +187,44 @@ export default function CreatePage() {
           <Toggle on={showAmounts} onChange={setShowAmounts} label="Show amounts publicly" />
         </div>
 
+        <div className={clsx("mt-4 rounded-2xl border-2 px-4 py-3.5 transition", firstOn ? "border-forest bg-forest-soft/40" : "border-dashed border-line")}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <b className="flex items-center gap-1.5 text-[15px]"><Gift size={16} />Add the first gift yourself <span className="font-normal text-ink-3">(optional)</span></b>
+              <div className="text-sm text-ink-3">Family is more likely to give when the nest isn&apos;t empty.</div>
+            </div>
+            <Toggle on={firstOn} onChange={setFirstOn} label="Add the first gift yourself" />
+          </div>
+          {firstOn && (
+            <div className="mt-3">
+              <p className="mb-2 text-sm font-semibold">Stock</p>
+              <div className="flex flex-wrap gap-2">
+                {picks.map((t) => (
+                  <button key={t} type="button" onClick={() => setFirstPick(t)} aria-pressed={firstTicker === t}
+                    className={clsx("flex items-center gap-2 rounded-full border-2 py-1 pl-1 pr-3 text-sm font-semibold transition", firstTicker === t ? "border-forest bg-paper" : "border-line bg-paper hover:border-ink-3")}>
+                    <StockLogo ticker={t} size={24} />{stockBy(t).name}
+                  </button>
+                ))}
+              </div>
+              <p className="mb-2 mt-4 text-sm font-semibold">Amount (USDC)</p>
+              <div className="grid grid-cols-4 gap-2">
+                {[10, 25, 50, 100].map((a) => (
+                  <button key={a} type="button" onClick={() => setFirstAmount(a)} aria-pressed={firstAmount === a}
+                    className={clsx("num h-12 rounded-xl border-2 font-bold transition", firstAmount === a ? "border-forest bg-forest text-white" : "border-line bg-paper")}>${a}</button>
+                ))}
+              </div>
+              <label htmlFor="firstMsg" className="mb-2 mt-4 block text-sm font-semibold">Your message <span className="font-normal text-ink-3">(optional)</span></label>
+              <input id="firstMsg" className={inputCls} maxLength={240} value={firstMsg} onChange={(e) => setFirstMsg(e.target.value)}
+                placeholder={`Welcome to your nest, ${childName.trim() || "little one"}!`} />
+              <p className="mt-2 text-sm text-ink-3">After you create the nest, we&apos;ll set up {childName.trim() || "your child"}&apos;s vault and take you straight to confirm this gift with your wallet.</p>
+            </div>
+          )}
+        </div>
+
         {error && <p role="alert" className="mt-5 rounded-xl bg-error-soft px-4 py-3 text-sm font-semibold text-error">{error}</p>}
         <Button block className="mt-6" onClick={submit} disabled={!valid || saving}>
           {saving && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-          {saving ? "Creating your nest…" : "Create Stock Nest"}
+          {saving ? "Creating your nest…" : firstOn ? `Create nest & add my $${firstAmount} gift` : "Create Stock Nest"}
         </Button>
         <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-sm text-ink-3"><ShieldCheck size={15} />No personal details go onchain. Not available to US persons.</p>
       </Card>
@@ -218,7 +272,23 @@ export default function CreatePage() {
             </button>
           </div>
         )}
-        {created && (
+        {created && firstOn && (
+          <div className="mt-3 rounded-2xl border-2 border-forest bg-forest-soft/40 p-3.5 text-left">
+            <div className="flex items-center gap-3">
+              <StockLogo ticker={firstTicker} size={36} />
+              <div className="min-w-0 flex-1">
+                <b className="block text-[15px]">Your first gift: ${firstAmount} of {stockBy(firstTicker).name}</b>
+                {firstMsg.trim() && <span className="font-display block truncate text-sm italic text-ink-2">&ldquo;{firstMsg.trim()}&rdquo;</span>}
+              </div>
+            </div>
+            <Button block size="sm" className="mt-3" onClick={sendFirstGift} disabled={vault === "busy"}>
+              <Gift size={15} />{vault === "busy" ? `Setting up ${created.childName}'s vault…` : "Send my gift"}
+            </Button>
+            {onchainEnabled && vault !== "done" && <p className="mt-2 text-xs text-ink-3">Your wallet opens twice: once to create {created.childName}&apos;s vault on {networkName} (you become the guardian), then to confirm your gift.</p>}
+            {vaultError && <p role="alert" className="mt-2 text-sm font-semibold text-error">{vaultError}</p>}
+          </div>
+        )}
+        {created && !firstOn && (
           <div className="mt-3 rounded-2xl border border-line p-3.5 text-left">
             <b className="block text-[15px]">Start it off yourself <span className="font-normal text-ink-3">(optional)</span></b>
             <p className="mt-0.5 text-sm text-ink-2">Nests fill faster when family opens the link and sees the first gift is already there.</p>

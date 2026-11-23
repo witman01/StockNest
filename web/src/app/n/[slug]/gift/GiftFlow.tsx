@@ -34,18 +34,23 @@ const inputCls = "w-full rounded-[10px] border-2 border-line bg-paper px-3.5 py-
 
 export function GiftFlow({ nest }: { nest: PublicNest }) {
   const router = useRouter();
-  const fromParent = useSearchParams().get("from") === "parent";
+  const params = useSearchParams();
+  const fromParent = params.get("from") === "parent";
+  // Parent picked their first gift on the create form: skip straight to the message step.
+  const preTicker = fromParent && STOCKS.some((s) => s.ticker === params.get("t")) ? params.get("t")! : "";
+  const preAmount = Math.min(10000, Math.max(1, Math.round(Number(params.get("amt")) || 0)));
+  const prefilled = !!preTicker && Number(params.get("amt")) >= 1;
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(prefilled ? 3 : 1);
   const [mode, setMode] = useState<GiftMode>("buy");
-  const [ticker, setTicker] = useState<string>("");
-  const [amount, setAmount] = useState(50);
-  const [custom, setCustom] = useState("");
+  const [ticker, setTicker] = useState<string>(preTicker);
+  const [amount, setAmount] = useState(prefilled ? preAmount : 50);
+  const [custom, setCustom] = useState(prefilled && !AMOUNTS.includes(preAmount) ? String(preAmount) : "");
   const [ownShares, setOwnShares] = useState("0.5");
   const [name, setName] = useState(fromParent ? nest.parentNames || "Mum & Dad" : "");
   const [isPrivate, setIsPrivate] = useState(false);
   const [occasion, setOccasion] = useState(OCCASIONS[0]);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(fromParent ? (params.get("msg") ?? "").slice(0, 240) : "");
   const [pay, setPay] = useState<Pay>("email");
   const [stepMsg, setStepMsg] = useState("");
   const [browserWallet, setBrowserWallet] = useState(false);
