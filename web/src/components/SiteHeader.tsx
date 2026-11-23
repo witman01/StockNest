@@ -13,7 +13,7 @@ export function SiteHeader() {
         <div className="flex items-center gap-2">
           <Link href="/dashboard" className="hidden px-2 font-medium text-ink-2 hover:text-ink xl:block">For parents</Link>
           <ThemeToggle />
-          <Button href="/create" size="sm"><span className="hidden sm:inline">Create a Stock Nest</span><span className="sm:hidden">Start a Nest</span></Button>
+          <Button href="/create" size="sm" className="max-[380px]:px-3.5! max-[380px]:text-[14px]!"><span className="hidden sm:inline">Create a Stock Nest</span><span className="sm:hidden">Start a Nest</span></Button>
         </div>
       </div>
       <div className="flex justify-center px-4 pb-2.5 lg:hidden"><DynamicIsland /></div>
