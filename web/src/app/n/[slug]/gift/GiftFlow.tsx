@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { ArrowLeft, CreditCard, Info, Mail, Wallet } from "lucide-react";
+import { ArrowLeft, CalendarDays, CalendarHeart, CalendarPlus, CreditCard, Gift as GiftIcon, Info, Lock, Mail, Send, Sparkles, Undo2, Wallet } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ChildAvatar } from "@/components/ChildAvatar";
@@ -25,6 +25,15 @@ const WINDOWS = [
   { id: "90d", label: "90 days", secs: 90 * 86400 },
   { id: "demo", label: "6 minutes (demo)", secs: 6 * 60 },
 ];
+const ymd = (days: number) => new Date(Date.now() + days * 86400e3).toISOString().slice(0, 10);
+/** When the gift can be opened. days: 0 = now, null = pick a date. */
+const UNLOCKS = [
+  { id: "now", label: "Right away", icon: Sparkles, days: 0 },
+  { id: "1m", label: "In a month", icon: CalendarDays, days: 30 },
+  { id: "1y", label: "In a year", icon: CalendarHeart, days: 365 },
+  { id: "custom", label: "Pick a date", icon: CalendarPlus, days: null },
+] as const;
+type UnlockId = (typeof UNLOCKS)[number]["id"];
 const fmtDate = (d: Date | string) => new Date(d).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 const fmtDay = (d: Date | string) => new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 type Pay = "email" | "wallet";
@@ -62,6 +71,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
   const [tracked, setTracked] = useState(0);
   const [unlockOn, setUnlockOn] = useState(""); // yyyy-mm-dd, empty = can be accepted now
   const [windowId, setWindowId] = useState(WINDOWS[0].id);
+  const [unlockPreset, setUnlockPreset] = useState<UnlockId>("now");
 
   // Order stocks: parents' picks first.
   const list = useMemo(() => {
@@ -297,23 +307,57 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                 <textarea id="msg" maxLength={240} className={clsx(inputCls, "font-display min-h-24 text-[17px] italic")} placeholder={`Happy birthday, ${kid}! Own a little piece of the future.`} value={message} onChange={(e) => setMessage(e.target.value)} />
                 {onchain && (
                   <>
-                    <p className="mb-2 mt-5 text-sm font-semibold">When can {kid}&apos;s parents accept it?</p>
-                    <div className="grid grid-cols-2 rounded-full bg-sand p-1">
-                      {[["", "Right away"], ["date", "On a date"]].map(([v, l]) => (
-                        <button key={l} onClick={() => setUnlockOn(v ? new Date(Date.now() + 30 * 86400e3).toISOString().slice(0, 10) : "")}
-                          className={clsx("rounded-full px-2 py-2.5 text-[15px] font-semibold transition", (v ? !!unlockOn : !unlockOn) ? "bg-paper text-forest shadow-soft" : "text-ink-2")}>{l}</button>
-                      ))}
+                    <p className="mb-2.5 mt-6 text-sm font-semibold">When can {kid} open it?</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {UNLOCKS.map((u) => {
+                        const on = unlockPreset === u.id;
+                        const Icon = u.icon;
+                        return (
+                          <button key={u.id} type="button" aria-pressed={on}
+                            onClick={() => { setUnlockPreset(u.id); setUnlockOn(u.days === null ? (unlockOn || ymd(30)) : u.days === 0 ? "" : ymd(u.days)); }}
+                            className={clsx("flex items-center gap-2.5 rounded-2xl border-2 px-3 py-2.5 text-left transition", on ? "border-forest bg-forest-soft" : "border-line bg-paper hover:border-ink-3")}>
+                            <span className={clsx("grid h-9 w-9 shrink-0 place-items-center rounded-xl", on ? "bg-forest text-white" : "bg-sand text-forest")}><Icon size={17} /></span>
+                            <span className="min-w-0 leading-tight">
+                              <b className="block text-[15px]">{u.label}</b>
+                              <span className="text-[13px] text-ink-3">{u.days === 0 ? "No waiting" : u.days === null ? (unlockPreset === "custom" && unlockOn ? fmtDay(unlockDate!) : "Birthday, holiday…") : fmtDay(new Date(Date.now() + u.days * 86400e3))}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
-                    {unlockOn && (
+                    {unlockPreset === "custom" && (
                       <input type="date" aria-label="Unlock date" className={clsx(inputCls, "mt-2.5")} value={unlockOn}
-                        min={new Date().toISOString().slice(0, 10)} onChange={(e) => setUnlockOn(e.target.value)} />
+                        min={ymd(0)} onChange={(e) => setUnlockOn(e.target.value)} />
                     )}
-                    <p className="mt-1.5 text-sm text-ink-3">{unlockOn ? `Locked until ${fmtDay(unlockDate!)}, like opening a present on the day.` : "They can accept it as soon as it arrives."}</p>
-                    <label htmlFor="window" className="mb-2 mt-5 block text-sm font-semibold">If it isn&apos;t accepted within</label>
-                    <select id="window" className={inputCls} value={windowId} onChange={(e) => setWindowId(e.target.value)}>
-                      {WINDOWS.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}
-                    </select>
-                    <p className="mt-1.5 text-sm text-ink-3">…you can take it back. Unclaimed gifts expire on {fmtDate(expiresDate)}.</p>
+
+                    <p className="mb-2.5 mt-6 text-sm font-semibold">Give {kid}&apos;s parents this long to accept it</p>
+                    <div className="grid grid-cols-4 gap-1.5 rounded-2xl bg-sand p-1">
+                      {["7d", "30d", "90d", "demo"].map((id) => {
+                        const w = WINDOWS.find((x) => x.id === id)!;
+                        return (
+                          <button key={id} type="button" aria-pressed={windowId === id} onClick={() => setWindowId(id)}
+                            className={clsx("rounded-xl px-1 py-2 text-sm font-semibold transition", windowId === id ? "bg-paper text-forest shadow-soft" : "text-ink-2")}>
+                            {id === "demo" ? <>6 min<span className="block text-[11px] font-medium text-ink-3">demo</span></> : w.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* timeline: sent → opens → can be returned */}
+                    <ol className="mt-4 grid grid-cols-3 rounded-2xl border border-line px-2 py-3 text-center text-[13px]">
+                      {[
+                        { icon: Send, t: "Sent", d: "Today" },
+                        { icon: GiftIcon, t: "Opens", d: unlockDate && unlockDate.getTime() > Date.now() ? fmtDay(unlockDate) : "Right away" },
+                        { icon: Undo2, t: "Back to you after", d: windowId === "demo" ? fmtDate(expiresDate) : fmtDay(expiresDate) },
+                      ].map(({ icon: Icon, t, d }, i) => (
+                        <li key={t} className="relative grid justify-items-center gap-1 px-1">
+                          {i > 0 && <span className="absolute right-1/2 top-[15px] h-0.5 w-full bg-line" aria-hidden />}
+                          <span className="relative grid h-8 w-8 place-items-center rounded-full bg-forest-soft text-forest"><Icon size={15} /></span>
+                          <span className="leading-tight text-ink-3">{t}</span>
+                          <b className="num leading-tight">{d}</b>
+                        </li>
+                      ))}
+                    </ol>
                   </>
                 )}
               </div>
@@ -390,7 +434,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
         steps={["Stock", "Note", "Gift"]}
         title={<>Give today.<br />Grow tomorrow.</>}
         subtitle={pending
-          ? <>{sent && !sent.isPrivate && name.trim() ? `Thank you, ${name.trim()}! ` : ""}Your <b>{fmtShares(sent!.shares)} {stock.name}</b> is wrapped and waiting for {kid}&apos;s parents to accept it{sent!.unlockAt && new Date(sent!.unlockAt) > new Date() ? <> on or after {fmtDay(sent!.unlockAt)}</> : null}. Until then it&apos;s still yours, held in escrow on Base. If it isn&apos;t accepted by {fmtDate(sent!.expiresAt!)}, you can take it back from {kid}&apos;s page.</>
+          ? <>{sent && !sent.isPrivate && name.trim() ? `Thank you, ${name.trim()}! ` : ""}Your <b>{fmtShares(sent!.shares)} {stock.name}</b> is wrapped for {kid}.</>
           : returned
           ? <>{stock.name} can&apos;t be delivered to {kid}&apos;s nest yet because of its transfer rules, so your test USDC was refunded automatically.</>
           : <>{sent && !sent.isPrivate && name.trim() ? `Thank you, ${name.trim()}! ` : ""}Your <b>{fmtShares(sent?.shares || giftShares)} {stock.name}</b> {sent && isRealTx(sent.txHash) ? "is now in" : "is on its way to"} {kid}&apos;s Stock Nest.</>}
@@ -399,8 +443,32 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
         shareLine={`Help spread the word and share ${kid}'s nest`}
         secondary={{ label: `View ${kid}'s gift page`, href: `/n/${nest.slug}` }}
       >
-        <DeliveryTracker rows={trackerRows} doneCount={tracked} />
-        <div className="mt-2 text-center">
+        {sent && (
+          <div className="mb-3 flex items-center gap-3 rounded-2xl border border-line px-3.5 py-3">
+            <StockLogo ticker={sent.ticker} size={44} />
+            <div className="min-w-0 flex-1">
+              <b className="block">{fmtShares(sent.shares)} {stockBy(sent.ticker).name}</b>
+              <span className="num text-sm text-ink-3">{usd(sent.usd, 2)} · {sent.occasion}</span>
+              {sent.message && <span className="font-display block truncate text-sm italic text-ink-2">&ldquo;{sent.message}&rdquo;</span>}
+            </div>
+          </div>
+        )}
+        {pending ? (
+          <div className="grid gap-2.5 rounded-2xl bg-sand px-4 py-3.5 text-[15px]">
+            {[
+              { icon: CalendarHeart, t: sent!.unlockAt && new Date(sent!.unlockAt) > new Date() ? <>Opens on <b>{fmtDay(sent!.unlockAt)}</b></> : <>{kid}&apos;s parents can accept it <b>now</b></> },
+              { icon: Lock, t: <>Still <b>yours</b> until they accept, held in escrow on Base</> },
+              { icon: Undo2, t: <>Not accepted by <b>{fmtDay(sent!.expiresAt!)}</b>? Take it back from {kid}&apos;s page</> },
+            ].map(({ icon: Icon, t }, i) => (
+              <div key={i} className="flex items-start gap-2.5 text-ink-2">
+                <Icon size={17} className="mt-0.5 shrink-0 text-forest" /><span>{t}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <DeliveryTracker rows={trackerRows} doneCount={tracked} />
+        )}
+        <div className="mt-3 text-center">
           {sent && txUrl(sent.txHash ?? "")
             ? <a href={txUrl(sent.txHash!)!} target="_blank" rel="noopener noreferrer"><Chip tone="base">View receipt on BaseScan ↗</Chip></a>
             : <Chip tone="base">Demo receipt (simulated)</Chip>}

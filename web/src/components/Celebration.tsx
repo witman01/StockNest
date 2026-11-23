@@ -67,12 +67,12 @@ export function Celebration({ open, onClose, steps, title, subtitle, children, s
             <X size={22} />
           </button>
 
-          <div className="cel-pop relative z-[1] mx-auto grid max-w-[460px] gap-4 px-4 pb-10 pt-14">
-            <div className="grid place-items-center rounded-[22px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,.18)]">
-              <span className="flex items-center gap-2.5 font-display text-2xl font-bold"><LogoMark size={44} /><span>Stock<span className="text-forest">Nest</span></span></span>
+          <div className="cel-pop relative z-[1] mx-auto grid max-w-[460px] gap-3 px-4 pb-8 pt-14 sm:gap-4">
+            <div className="grid place-items-center rounded-[22px] bg-white p-3.5 shadow-[0_10px_30px_rgba(0,0,0,.18)]">
+              <span className="flex items-center gap-2.5 font-display text-xl font-bold"><LogoMark size={34} /><span>Stock<span className="text-forest">Nest</span></span></span>
             </div>
 
-            <div className="rounded-[22px] bg-white px-6 pb-7 pt-8 text-center shadow-[0_10px_30px_rgba(0,0,0,.18)]">
+            <div className="rounded-[22px] bg-white px-5 pb-6 pt-6 text-center sm:px-6 shadow-[0_10px_30px_rgba(0,0,0,.18)]">
               <div className="relative mx-auto mb-1.5 flex max-w-[300px] justify-between">
                 <div className="absolute left-[16%] right-[16%] top-[17px] h-[3px] rounded bg-forest" />
                 {steps.map((s, i) => (
@@ -82,10 +82,10 @@ export function Celebration({ open, onClose, steps, title, subtitle, children, s
                   </div>
                 ))}
               </div>
-              <h2 className="font-display mb-3 mt-6 text-[40px] font-semibold leading-[1.05] sm:text-[46px]">{title}</h2>
-              <p className="mx-auto max-w-[340px] text-[17px] text-ink-2">{subtitle}</p>
-              {children && <div className="mb-1 mt-5 text-left">{children}</div>}
-              <p className="mb-3 mt-6">{shareLine}</p>
+              <h2 className="font-display mb-2.5 mt-5 text-[34px] font-semibold leading-[1.05] sm:text-[42px]">{title}</h2>
+              <p className="mx-auto max-w-[360px] text-base text-ink-2 sm:text-[17px]">{subtitle}</p>
+              {children && <div className="mb-1 mt-4 text-left">{children}</div>}
+              <p className="mb-2.5 mt-5">{shareLine}</p>
               <Button block onClick={() => shareLink(shareUrl, shareTitle, toast)}>Share link</Button>
               <Button variant="ghost" href={secondary.href} className="mt-2">{secondary.label}</Button>
             </div>
