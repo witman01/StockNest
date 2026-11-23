@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { ArrowLeft, CalendarDays, CalendarHeart, CalendarPlus, CreditCard, Gift as GiftIcon, Info, Lock, Mail, Send, Sparkles, Undo2, Wallet } from "lucide-react";
+import { ArrowLeft, CalendarHeart, CreditCard, Gift as GiftIcon, Info, Lock, Mail, Send, Undo2, Wallet } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ChildAvatar } from "@/components/ChildAvatar";
@@ -13,27 +13,12 @@ import { sendGift } from "@/lib/api";
 import { isRealTx, networkName, onchainEnabled, RESTRICTED, txUrl } from "@/lib/chain";
 import { connectWallet, hasBrowserWallet, sendStockGift, walletError } from "@/lib/wallet";
 import { DEMO_WALLET, STOCKS, stockBy } from "@/lib/stocks";
+import { giftTiming, WINDOW_SLACK } from "@/lib/nests";
 import { shares as fmtShares, usd } from "@/lib/format";
 import { priceFor, usePrices } from "@/lib/usePrices";
 
 const OCCASIONS = ["🎂 Birthday", "🎄 Holiday", "🎓 Graduation", "💛 Just because"];
 const AMOUNTS = [10, 25, 50, 100];
-/** How long the parent has to accept before the giver can take the gift back. */
-const WINDOWS = [
-  { id: "30d", label: "30 days", secs: 30 * 86400 },
-  { id: "7d", label: "7 days", secs: 7 * 86400 },
-  { id: "90d", label: "90 days", secs: 90 * 86400 },
-  { id: "demo", label: "6 minutes (demo)", secs: 6 * 60 },
-];
-const ymd = (days: number) => new Date(Date.now() + days * 86400e3).toISOString().slice(0, 10);
-/** When the gift can be opened. days: 0 = now, null = pick a date. */
-const UNLOCKS = [
-  { id: "now", label: "Right away", icon: Sparkles, days: 0 },
-  { id: "1m", label: "In a month", icon: CalendarDays, days: 30 },
-  { id: "1y", label: "In a year", icon: CalendarHeart, days: 365 },
-  { id: "custom", label: "Pick a date", icon: CalendarPlus, days: null },
-] as const;
-type UnlockId = (typeof UNLOCKS)[number]["id"];
 const fmtDate = (d: Date | string) => new Date(d).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 const fmtDay = (d: Date | string) => new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 type Pay = "email" | "wallet";
@@ -60,18 +45,21 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
   const [isPrivate, setIsPrivate] = useState(false);
   const [occasion, setOccasion] = useState(OCCASIONS[0]);
   const [message, setMessage] = useState(fromParent ? (params.get("msg") ?? "").slice(0, 240) : "");
-  const [pay, setPay] = useState<Pay>("email");
+  const [pay, setPay] = useState<Pay>("wallet");
   const [stepMsg, setStepMsg] = useState("");
   const [browserWallet, setBrowserWallet] = useState(false);
-  useEffect(() => setBrowserWallet(hasBrowserWallet()), []);
+  const [mmLink, setMmLink] = useState("");
+  useEffect(() => {
+    const has = hasBrowserWallet();
+    setBrowserWallet(has);
+    if (!has) setPay("email");
+    setMmLink(`https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}${window.location.search}`);
+  }, []);
   const [phase, setPhase] = useState<Phase>("idle");
   const [sent, setSent] = useState<Gift | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [eligible, setEligible] = useState(false);
   const [tracked, setTracked] = useState(0);
-  const [unlockOn, setUnlockOn] = useState(""); // yyyy-mm-dd, empty = can be accepted now
-  const [windowId, setWindowId] = useState(WINDOWS[0].id);
-  const [unlockPreset, setUnlockPreset] = useState<UnlockId>("now");
 
   // Order stocks: parents' picks first.
   const list = useMemo(() => {
@@ -99,10 +87,11 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
 
   const onchainNest = onchainEnabled && !!nest.chainNestId;
   const onchain = onchainNest && mode === "buy";
-  const claimWindow = WINDOWS.find((w) => w.id === windowId) ?? WINDOWS[0];
-  const unlockDate = unlockOn ? new Date(`${unlockOn}T00:00:00`) : null;
-  const startsAt = unlockDate && unlockDate.getTime() > Date.now() ? unlockDate : new Date();
-  const expiresDate = new Date(startsAt.getTime() + claimWindow.secs * 1000);
+  // Gift rules come from the nest (set by the parent), not the giver.
+  const timing = giftTiming(nest);
+  const unlockDate = timing.unlockAt ? new Date(timing.unlockAt * 1000) : null;
+  const expiresDate = new Date((timing.expiresAt - WINDOW_SLACK) * 1000);
+  const shortWindow = timing.window < 86400;
   const restrictedPick = RESTRICTED.has(stock.ticker);
 
   async function confirmOnchain() {
@@ -117,10 +106,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
       if (!qr.ok) throw new Error(quote.error || "Couldn't get a price right now.");
       setPhase("executing");
       const msg = message.trim();
-      const nowSecs = Math.floor(Date.now() / 1000);
-      const unlockAt = unlockDate ? Math.max(0, Math.floor(unlockDate.getTime() / 1000)) : 0;
-      // +2 minutes so the window still meets the contract minimum after the tx is mined.
-      const expiresAt = Math.max(nowSecs, unlockAt) + claimWindow.secs + 120;
+      const { unlockAt, expiresAt } = giftTiming(nest);
       const txHash = await sendStockGift({ wallet, nestId: nest.chainNestId!, usdAmount: amount, quote, message: msg, unlockAt, expiresAt, onStep: setStepMsg });
       setStepMsg("Recording your gift…");
       const { gift } = await sendGift(nest.slug, { mode: "buy", ticker: stock.ticker, txHash, from: name.trim(), isPrivate, occasion, message: msg });
@@ -309,48 +295,14 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                 <textarea id="msg" maxLength={240} className={clsx(inputCls, "font-display min-h-24 text-[17px] italic")} placeholder={`Happy birthday, ${kid}! Own a little piece of the future.`} value={message} onChange={(e) => setMessage(e.target.value)} />
                 {onchain && (
                   <>
-                    <p className="mb-2.5 mt-6 text-sm font-semibold">When can {kid} open it?</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {UNLOCKS.map((u) => {
-                        const on = unlockPreset === u.id;
-                        const Icon = u.icon;
-                        return (
-                          <button key={u.id} type="button" aria-pressed={on}
-                            onClick={() => { setUnlockPreset(u.id); setUnlockOn(u.days === null ? (unlockOn || ymd(30)) : u.days === 0 ? "" : ymd(u.days)); }}
-                            className={clsx("flex items-center gap-2.5 rounded-2xl border-2 px-3 py-2.5 text-left transition", on ? "border-forest bg-forest-soft" : "border-line bg-paper hover:border-ink-3")}>
-                            <span className={clsx("grid h-9 w-9 shrink-0 place-items-center rounded-xl", on ? "bg-forest text-white" : "bg-sand text-forest")}><Icon size={17} /></span>
-                            <span className="min-w-0 leading-tight">
-                              <b className="block text-[15px]">{u.label}</b>
-                              <span className="text-[13px] text-ink-3">{u.days === 0 ? "No waiting" : u.days === null ? (unlockPreset === "custom" && unlockOn ? fmtDay(unlockDate!) : "Birthday, holiday…") : fmtDay(new Date(Date.now() + u.days * 86400e3))}</span>
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {unlockPreset === "custom" && (
-                      <input type="date" aria-label="Unlock date" className={clsx(inputCls, "mt-2.5")} value={unlockOn}
-                        min={ymd(0)} onChange={(e) => setUnlockOn(e.target.value)} />
-                    )}
-
-                    <p className="mb-2.5 mt-6 text-sm font-semibold">Give {kid}&apos;s parents this long to accept it</p>
-                    <div className="grid grid-cols-4 gap-1.5 rounded-2xl bg-sand p-1">
-                      {["7d", "30d", "90d", "demo"].map((id) => {
-                        const w = WINDOWS.find((x) => x.id === id)!;
-                        return (
-                          <button key={id} type="button" aria-pressed={windowId === id} onClick={() => setWindowId(id)}
-                            className={clsx("rounded-xl px-1 py-2 text-sm font-semibold transition", windowId === id ? "bg-paper text-forest shadow-soft" : "text-ink-2")}>
-                            {id === "demo" ? <>6 min<span className="block text-[11px] font-medium text-ink-3">demo</span></> : w.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-
+                    {/* gift rules, set by the parent */}
+                    <p className="mb-2 mt-6 text-sm font-semibold">{kid}&apos;s gift rules <span className="font-normal text-ink-3">(set by {nest.parentNames && nest.parentNames !== "the family" ? nest.parentNames : `${kid}'s parents`})</span></p>
                     {/* timeline: sent → opens → can be returned */}
-                    <ol className="mt-4 grid grid-cols-3 rounded-2xl border border-line px-2 py-3 text-center text-[13px]">
+                    <ol className="grid grid-cols-3 rounded-2xl border border-line px-2 py-3 text-center text-[13px]">
                       {[
                         { icon: Send, t: "Sent", d: "Today" },
                         { icon: GiftIcon, t: "Opens", d: unlockDate && unlockDate.getTime() > Date.now() ? fmtDay(unlockDate) : "Right away" },
-                        { icon: Undo2, t: "Back to you after", d: windowId === "demo" ? fmtDate(expiresDate) : fmtDay(expiresDate) },
+                        { icon: Undo2, t: "Back to you if unopened", d: shortWindow ? fmtDate(expiresDate) : fmtDay(expiresDate) },
                       ].map(({ icon: Icon, t, d }, i) => (
                         <li key={t} className="relative grid justify-items-center gap-1 px-1">
                           {i > 0 && <span className="absolute right-1/2 top-[15px] h-0.5 w-full bg-line" aria-hidden />}
@@ -372,9 +324,15 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                   <>
                     <p className="mb-2 mt-5 text-sm font-semibold">Pay with</p>
                     <div className="grid gap-2.5">
+                      {!browserWallet && mmLink && (
+                        <a href={mmLink} className="flex items-center gap-3.5 rounded-2xl border-2 border-line bg-paper p-3.5 text-left transition hover:border-ink-3">
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-honey-soft text-forest"><Wallet size={19} /></span>
+                          <span><b className="block">Open in the MetaMask app</b><small className="text-sm text-ink-2">On your phone? This opens this gift inside MetaMask so you can pay there.</small></span>
+                        </a>
+                      )}
                       {[
-                        { id: "email" as const, icon: Mail, t: "Continue with email or passkey", d: "Coinbase Smart Wallet. New here? It takes seconds, with no seed phrase.", bg: "bg-forest-soft", off: false },
-                        { id: "wallet" as const, icon: Wallet, t: "Connect a browser wallet", d: browserWallet ? "MetaMask, Coinbase Wallet extension or another wallet" : "No browser wallet found on this device", bg: "bg-onchain-soft", off: !browserWallet },
+                        { id: "wallet" as const, icon: Wallet, t: "Connect a browser wallet", d: browserWallet ? "MetaMask, Rabby, Coinbase Wallet extension or another wallet" : "No browser wallet found on this device", bg: "bg-onchain-soft", off: !browserWallet },
+                        { id: "email" as const, icon: Mail, t: "Coinbase Smart Wallet", d: "Email or passkey, no seed phrase. Opens keys.coinbase.com, which isn't available in every country.", bg: "bg-forest-soft", off: false },
                       ].map(({ id, icon: Icon, t, d, bg, off }) => (
                         <button key={id} disabled={off} onClick={() => setPay(id)} className={clsx("flex items-center gap-3.5 rounded-2xl border-2 p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-50", pay === id ? "border-forest bg-forest-soft" : "border-line bg-paper")}>
                           <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-forest ${bg}`}><Icon size={19} /></span>

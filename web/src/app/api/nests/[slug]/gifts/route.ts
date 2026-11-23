@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
-import type { Gift } from "@/lib/nests";
+import { giftTiming, opensAtMs, WINDOW_SLACK, type Gift } from "@/lib/nests";
 import { getRepo } from "@/lib/server/repo";
 import { rateLimited } from "@/lib/server/ratelimit";
 import { firstError, GiftInput } from "@/lib/server/validate";
@@ -36,6 +36,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : "Couldn't verify the transaction." }, { status: 400 }); }
     if (v.nestId !== nest.chainNestId) return NextResponse.json({ error: "That gift went to a different nest." }, { status: 400 });
     if (v.memoHash !== memoHashOf(g.message)) return NextResponse.json({ error: "The message doesn't match the onchain gift." }, { status: 400 });
+    // The parent sets the gift rules; a gift sent with other dates isn't accepted here.
+    const rule = giftTiming(nest);
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const opens = Math.floor(opensAtMs(nest.opensOn) / 1000);
+    const unlockSecs = Math.floor(Date.parse(v.unlockAt) / 1000);
+    const left = Math.floor(Date.parse(v.expiresAt) / 1000) - Math.max(unlockSecs, nowSecs);
+    const unlockOk = unlockSecs === rule.unlockAt || (opens > 0 && unlockSecs === opens) || (rule.unlockAt === 0 && unlockSecs <= nowSecs);
+    const windowOk = left <= rule.window + WINDOW_SLACK + 60 && left >= rule.window + WINDOW_SLACK - 900;
+    if (!unlockOk || !windowOk) return NextResponse.json({ error: "This gift doesn't follow the nest's gift rules." }, { status: 400 });
     const gift: Gift = {
       id: randomBytes(6).toString("hex"),
       from: g.from || "Someone who loves you",

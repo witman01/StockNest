@@ -108,6 +108,7 @@ type NestRow = {
   show_photo: boolean; note: string; parent_names: string; milestone: string | null; goal: number | null;
   picks: string[]; show_amounts: boolean; manage_token_hash: string | null; created_at: string;
   chain_nest_id: number | null; vault: string | null; guardian: string | null;
+  opens_on: string | null; accept_window: number | null;
 };
 type GiftRow = {
   id: string; nest_slug: string; giver: string; is_private: boolean; ticker: string; shares: number; usd: number;
@@ -120,6 +121,7 @@ const toNestRow = (n: NestRecord): NestRow => ({
   show_photo: n.showPhoto, note: n.note, parent_names: n.parentNames, milestone: n.milestone ?? null, goal: n.goal ?? null,
   picks: n.picks, show_amounts: n.showAmounts, manage_token_hash: n.manageTokenHash ?? null, created_at: n.createdAt,
   chain_nest_id: n.chainNestId ?? null, vault: n.vault ?? null, guardian: n.guardian ?? null,
+  opens_on: n.opensOn ?? null, accept_window: n.acceptWindow ?? null,
 });
 const toGiftRow = (slug: string, g: Gift): GiftRow => ({
   id: g.id, nest_slug: slug, giver: g.from, is_private: g.isPrivate, ticker: g.ticker, shares: g.shares, usd: g.usd,
@@ -133,6 +135,7 @@ const fromRows = (r: NestRow, gifts: GiftRow[]): NestRecord => ({
   goal: r.goal ?? undefined, picks: r.picks, showAmounts: r.show_amounts, manageTokenHash: r.manage_token_hash ?? undefined,
   createdAt: r.created_at,
   chainNestId: r.chain_nest_id ?? undefined, vault: r.vault ?? undefined, guardian: r.guardian ?? undefined,
+  opensOn: r.opens_on ?? undefined, acceptWindow: r.accept_window ?? undefined,
   gifts: gifts.map((g) => ({
     id: g.id, from: g.giver, isPrivate: g.is_private, ticker: g.ticker, shares: Number(g.shares), usd: Number(g.usd),
     occasion: g.occasion, message: g.message, mode: g.mode, status: g.status, txHash: g.tx_hash ?? undefined, createdAt: g.created_at,

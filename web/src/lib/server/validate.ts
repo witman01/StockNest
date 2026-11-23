@@ -1,3 +1,4 @@
+import { ACCEPT_WINDOWS, DEFAULT_ACCEPT_WINDOW } from "@/lib/nests";
 import { z } from "zod";
 import { STOCKS } from "@/lib/stocks";
 
@@ -15,6 +16,12 @@ export const CreateNestInput = z.object({
   goal: z.number().int().positive().max(100_000_000).optional(),
   picks: z.array(z.enum(TICKERS)).min(1, "Pick at least one stock.").max(6),
   showAmounts: z.boolean().default(true),
+  /** Gifts open on this day (yyyy-mm-dd). Must be in the future, at most 20 years out. */
+  opensOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((d) => {
+    const t = Date.parse(`${d}T00:00:00Z`);
+    return t > Date.now() && t < Date.now() + 20 * 365 * 86400e3;
+  }, "Pick a date in the future.").optional(),
+  acceptWindow: z.union(ACCEPT_WINDOWS.map((w) => z.literal(w.secs)) as unknown as [z.ZodLiteral<number>, z.ZodLiteral<number>]).default(DEFAULT_ACCEPT_WINDOW),
 });
 
 export const GiftInput = z.object({

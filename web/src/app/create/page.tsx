@@ -1,14 +1,14 @@
 "use client";
 
 import clsx from "clsx";
-import { Check, Copy, Eye, Gift, ShieldCheck, Wallet } from "lucide-react";
+import { Baby, CalendarHeart, Check, Copy, Eye, Gift, LineChart, MessageCircleHeart, ShieldCheck, Sparkles, Undo2, Wallet, type LucideIcon } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { AVATAR_KINDS, ChildAvatar } from "@/components/ChildAvatar";
 import { Celebration } from "@/components/Celebration";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { StockLogo } from "@/components/StockLogo";
 import { Button, Card, Toggle, useToast } from "@/components/ui";
-import type { AvatarKind, Gift as GiftT } from "@/lib/nests";
+import { ACCEPT_WINDOWS, DEFAULT_ACCEPT_WINDOW, acceptWindowLabel, giftTiming, type AvatarKind, type Gift as GiftT } from "@/lib/nests";
 import { createNest, saveOwned, sendGift, syncGift, uploadPhoto } from "@/lib/api";
 import { networkName, onchainEnabled } from "@/lib/chain";
 import { claimOnchainGift, connectWallet, createOnchainNest, hasBrowserWallet, sendStockGift, walletError } from "@/lib/wallet";
@@ -17,9 +17,31 @@ type Created = { slug: string; token: string; nestName: string; childName: strin
 import { STOCKS, stockBy } from "@/lib/stocks";
 import { shares, usd } from "@/lib/format";
 
-const Label = ({ children, htmlFor, hint }: { children: React.ReactNode; htmlFor?: string; hint?: string }) => (
-  <label htmlFor={htmlFor} className="mb-2 mt-5 block text-sm font-semibold">{children} {hint && <span className="font-normal text-ink-3">({hint})</span>}</label>
+const Label = ({ children, htmlFor, hint, first }: { children: React.ReactNode; htmlFor?: string; hint?: string; first?: boolean }) => (
+  <label htmlFor={htmlFor} className={clsx("mb-2 block text-sm font-semibold", first ? "mt-0" : "mt-5")}>{children} {hint && <span className="font-normal text-ink-3">({hint})</span>}</label>
 );
+const isoDay = (days: number) => new Date(Date.now() + days * 86400e3).toISOString().slice(0, 10);
+const fmtDay = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+
+/** One numbered step of the form. */
+function Section({ n, icon: Icon, title, sub, right, children }: { n: number; icon: LucideIcon; title: string; sub: string; right?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <Card className="p-5! md:p-6!">
+      <div className="mb-4 flex items-start gap-3">
+        <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-forest text-white">
+          <Icon size={20} />
+          <span className="num absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-honey text-[11px] font-bold text-ink ring-2 ring-paper">{n}</span>
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold leading-tight">{title}</h2>
+          <p className="mt-0.5 text-sm text-ink-3">{sub}</p>
+        </div>
+        {right}
+      </div>
+      {children}
+    </Card>
+  );
+}
 const inputCls = "w-full rounded-[10px] border-2 border-line bg-paper px-3.5 py-3 text-base outline-none transition focus:border-forest";
 
 export default function CreatePage() {
@@ -37,6 +59,10 @@ export default function CreatePage() {
   const [note, setNote] = useState("");
   const [parentNames, setParentNames] = useState("");
   const [showAmounts, setShowAmounts] = useState(true);
+  const [opensMode, setOpensMode] = useState<"now" | "date">("now");
+  const [opensOn, setOpensOn] = useState("");
+  const [acceptWindow, setAcceptWindow] = useState<number>(DEFAULT_ACCEPT_WINDOW);
+  const rules = { opensOn: opensMode === "date" && opensOn ? opensOn : undefined, acceptWindow };
   const [created, setCreated] = useState<Created | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,12 +106,12 @@ export default function CreatePage() {
     const qr = await fetch("/api/quote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticker: firstTicker }) });
     const quote = await qr.json();
     if (!qr.ok) throw new Error(quote.error || "Couldn't get a price right now.");
-    const expiresAt = Math.floor(Date.now() / 1000) + 30 * 86400 + 120;
-    const txHash = await sendStockGift({ wallet, nestId: d.chainNestId, usdAmount: firstAmount, quote, message, unlockAt: 0, expiresAt, onStep: setProgress });
+    const { unlockAt, expiresAt } = giftTiming(rules);
+    const txHash = await sendStockGift({ wallet, nestId: d.chainNestId, usdAmount: firstAmount, quote, message, unlockAt, expiresAt, onStep: setProgress });
     setProgress("Recording your gift…");
     let { gift } = await sendGift(d.slug, { mode: "buy", ticker: firstTicker, txHash, from, isPrivate: false, occasion, message });
     // You're the giver and the guardian, so accept it into the nest right away.
-    if (gift.chainGiftId) {
+    if (gift.chainGiftId && !unlockAt) {
       try {
         setProgress("Accepting it into the nest…");
         const claimTx = await claimOnchainGift(wallet, gift.chainGiftId);
@@ -127,8 +153,9 @@ export default function CreatePage() {
   const errors = useMemo(() => ({
     childName: childName.trim().length < 1 ? "Please add a display name." : null,
     picks: picks.length < 1 ? "Pick at least one stock." : null,
-  }), [childName, picks]);
-  const valid = !errors.childName && !errors.picks;
+    opens: opensMode === "date" && !(opensOn && opensOn > isoDay(0)) ? "Pick a day in the future." : null,
+  }), [childName, picks, opensMode, opensOn]);
+  const valid = !errors.childName && !errors.picks && !errors.opens;
 
   function togglePick(t: string) {
     setPicks((p) => (p.includes(t) ? p.filter((x) => x !== t) : p.length < 6 ? [...p, t] : p));
@@ -146,7 +173,7 @@ export default function CreatePage() {
         const finalName = nestName.trim() || `${childName.trim()}'s Stock Nest`;
         const { slug, manageToken } = await createNest({
           childName: childName.trim(), nestName: finalName, avatar, photo: photoUrl, showPhoto: !!photo && showPhoto,
-          note: note.trim(), parentNames: parentNames.trim(), goal: goalNum > 0 ? Math.round(goalNum) : undefined, picks, showAmounts,
+          note: note.trim(), parentNames: parentNames.trim(), goal: goalNum > 0 ? Math.round(goalNum) : undefined, picks, showAmounts, ...rules,
         });
         d = { slug, token: manageToken, finalName, photo: photoUrl };
         setVault("none");
@@ -166,112 +193,161 @@ export default function CreatePage() {
 
   return (
     <div className="mx-auto grid max-w-[1160px] gap-6 px-4 pb-16 pt-4 md:px-8 lg:grid-cols-[1.1fr_1fr] lg:items-start">
-      <Card>
-        <span className="text-xs font-bold uppercase tracking-[.06em] text-forest">For parents & guardians</span>
-        <h1 className="font-display mt-1.5 text-[30px] font-semibold md:text-[38px]">Create a Stock Nest</h1>
-        <p className="mt-2 text-ink-2">We only ask for what the gift page needs. No surnames, birthdays or schools.</p>
-
-        <Label htmlFor="childName">Child&apos;s display name</Label>
-        <input id="childName" className={inputCls} value={childName} maxLength={24} placeholder="e.g. Zara" onBlur={() => setChildTouched(true)}
-          onChange={(e) => { setChildName(e.target.value); if (!nameTouched) setNestName(`${e.target.value.trim() || "Your child"}'s Stock Nest`); }} />
-        {errors.childName && childTouched && <p className="mt-1.5 text-sm text-error">{errors.childName}</p>}
-
-        <Label>Profile photo</Label>
-        <PhotoUpload value={photo} onChange={(p) => { setPhoto(p); if (p) setShowPhoto(true); }} />
-        {photo && (
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-sand px-4 py-3.5">
-            <div>
-              <b className="flex items-center gap-1.5 text-[15px]"><Eye size={16} />Show photo on the shared page</b>
-              <div className="text-sm text-ink-3">Anyone with the link can see it. It also appears when the link is shared.</div>
-            </div>
-            <Toggle on={showPhoto} onChange={setShowPhoto} label="Show photo on shared page" />
-          </div>
-        )}
-        {!photo || !showPhoto ? (
-          <>
-            <p className="mb-2 mt-4 text-sm text-ink-2">{photo ? "We'll show this avatar instead:" : "No photo? Pick an avatar instead:"}</p>
-            <div className="flex flex-wrap gap-2.5">
-              {AVATAR_KINDS.map((k) => (
-                <button key={k} type="button" onClick={() => setAvatar(k)} aria-label={`${k} avatar`} aria-pressed={avatar === k}
-                  className={clsx("rounded-full border-[3px] p-0", avatar === k ? "border-forest" : "border-transparent")}>
-                  <ChildAvatar kind={k} size={52} ring={false} />
-                </button>
-              ))}
-            </div>
-          </>
-        ) : null}
-
-        <Label htmlFor="nestName">Nest name</Label>
-        <input id="nestName" className={inputCls} value={nestName} maxLength={40} placeholder={`${childName.trim() || "Your child"}'s Stock Nest`} onChange={(e) => { setNestName(e.target.value); setNameTouched(true); }} />
-
-        <Label hint="choose up to 6">Stocks family can gift</Label>
-        <div className="flex flex-wrap gap-2">
-          {STOCKS.map((s) => {
-            const on = picks.includes(s.ticker);
-            return (
-              <button key={s.ticker} type="button" onClick={() => togglePick(s.ticker)} aria-pressed={on}
-                className={clsx("flex items-center gap-2 rounded-full border-2 py-1 pl-1 pr-3.5 text-sm font-semibold transition", on ? "border-forest bg-forest-soft" : "border-line bg-paper hover:border-ink-3")}>
-                <StockLogo ticker={s.ticker} size={28} />{s.name}
-              </button>
-            );
-          })}
-        </div>
-        {errors.picks ? <p className="mt-1.5 text-sm text-error">{errors.picks}</p> : <p className="mt-2 text-sm text-ink-3">Only tokenized stocks eligible on Base are offered. You can change these anytime.</p>}
-
-        <Label htmlFor="goal" hint="optional, total value gifted">Goal</Label>
-        <div className="relative">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-ink-2">$</span>
-          <input id="goal" className={clsx(inputCls, "num pl-8")} inputMode="numeric" value={goal ? Number(goal).toLocaleString("en-US") : ""} placeholder="5,000" onChange={(e) => setGoal(e.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 9))} />
+      <div>
+        <div className="mb-5 px-1">
+          <span className="text-xs font-bold uppercase tracking-[.06em] text-forest">For parents & guardians</span>
+          <h1 className="font-display mt-1.5 text-[32px] font-semibold leading-tight md:text-[40px]">Create a Stock Nest</h1>
+          <p className="mt-2 text-ink-2">Five quick steps. We only ask for what the gift page needs: no surnames, birthdays or schools.</p>
         </div>
 
-        <Label htmlFor="note">A note to family & friends</Label>
-        <textarea id="note" className={clsx(inputCls, "font-display min-h-24 text-[17px] italic")} value={note} maxLength={180} onChange={(e) => setNote(e.target.value)}
-          placeholder={`Instead of another toy this year, help us give ${childName.trim() || "our child"} a piece of the companies shaping their future.`} />
+        <div className="grid gap-4">
+          {/* 1 — who */}
+          <Section n={1} icon={Baby} title="Who is this nest for?" sub="Family sees this name and picture on the gift page.">
+            <Label htmlFor="childName" first>Child&apos;s display name</Label>
+            <input id="childName" className={inputCls} value={childName} maxLength={24} placeholder="e.g. Zara" onBlur={() => setChildTouched(true)}
+              onChange={(e) => { setChildName(e.target.value); if (!nameTouched) setNestName(`${e.target.value.trim() || "Your child"}'s Stock Nest`); }} />
+            {errors.childName && childTouched && <p className="mt-1.5 text-sm text-error">{errors.childName}</p>}
 
-        <Label htmlFor="parents" hint="how the note is signed">From</Label>
-        <input id="parents" className={inputCls} placeholder="e.g. Daniel & Grace" value={parentNames} onChange={(e) => setParentNames(e.target.value)} />
-
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-sand px-4 py-3.5">
-          <div><b className="text-[15px]">Show gift amounts publicly</b><div className="text-sm text-ink-3">Off means only you see amounts, and everyone sees messages.</div></div>
-          <Toggle on={showAmounts} onChange={setShowAmounts} label="Show amounts publicly" />
-        </div>
-
-        <div className={clsx("mt-4 rounded-2xl border-2 px-4 py-3.5 transition", firstOn ? "border-forest bg-forest-soft/40" : "border-dashed border-line")}>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <b className="flex items-center gap-1.5 text-[15px]"><Gift size={16} />Add the first gift yourself <span className="font-normal text-ink-3">(optional)</span></b>
-              <div className="text-sm text-ink-3">Family is more likely to give when the nest isn&apos;t empty.</div>
-            </div>
-            <Toggle on={firstOn} onChange={setFirstOn} label="Add the first gift yourself" />
-          </div>
-          {firstOn && (
-            <div className="mt-3">
-              <p className="mb-2 text-sm font-semibold">Stock</p>
-              <div className="flex flex-wrap gap-2">
-                {picks.map((t) => (
-                  <button key={t} type="button" onClick={() => setFirstPick(t)} aria-pressed={firstTicker === t}
-                    className={clsx("flex items-center gap-2 rounded-full border-2 py-1 pl-1 pr-3 text-sm font-semibold transition", firstTicker === t ? "border-forest bg-paper" : "border-line bg-paper hover:border-ink-3")}>
-                    <StockLogo ticker={t} size={24} />{stockBy(t).name}
+            <Label>Photo or avatar</Label>
+            <PhotoUpload value={photo} onChange={(p) => { setPhoto(p); if (p) setShowPhoto(true); }} />
+            {photo && (
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-sand px-4 py-3.5">
+                <div>
+                  <b className="flex items-center gap-1.5 text-[15px]"><Eye size={16} />Show photo on the shared page</b>
+                  <div className="text-sm text-ink-3">Anyone with the link can see it, including in link previews.</div>
+                </div>
+                <Toggle on={showPhoto} onChange={setShowPhoto} label="Show photo on shared page" />
+              </div>
+            )}
+            {!photo || !showPhoto ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2.5">
+                <span className="mr-1 text-sm text-ink-3">{photo ? "Shown instead:" : "Or pick one:"}</span>
+                {AVATAR_KINDS.map((k) => (
+                  <button key={k} type="button" onClick={() => setAvatar(k)} aria-label={`${k} avatar`} aria-pressed={avatar === k}
+                    className={clsx("rounded-full border-[3px] p-0 transition", avatar === k ? "scale-105 border-forest" : "border-transparent opacity-80 hover:opacity-100")}>
+                    <ChildAvatar kind={k} size={48} ring={false} />
                   </button>
                 ))}
               </div>
-              <p className="mb-2 mt-4 text-sm font-semibold">Amount (USDC)</p>
-              <div className="grid grid-cols-4 gap-2">
-                {[10, 25, 50, 100].map((a) => (
-                  <button key={a} type="button" onClick={() => setFirstAmount(a)} aria-pressed={firstAmount === a}
-                    className={clsx("num h-12 rounded-xl border-2 font-bold transition", firstAmount === a ? "border-forest bg-forest text-white" : "border-line bg-paper")}>${a}</button>
-                ))}
-              </div>
-              <label htmlFor="firstMsg" className="mb-2 mt-4 block text-sm font-semibold">Your message <span className="font-normal text-ink-3">(optional)</span></label>
-              <input id="firstMsg" className={inputCls} maxLength={240} value={firstMsg} onChange={(e) => setFirstMsg(e.target.value)}
-                placeholder={`Welcome to your nest, ${childName.trim() || "little one"}!`} />
-              <p className="mt-2 text-sm text-ink-3">
-                {onchainEnabled
-                  ? <>When you tap Create, your wallet opens to set up {childName.trim() || "your child"}&apos;s vault on {networkName}, send this gift and accept it into the nest (a few confirmations). The nest is only finished once your gift is in.</>
-                  : <>Your gift is added as the nest is created.</>}
-              </p>
+            ) : null}
+
+            <Label htmlFor="nestName">Nest name</Label>
+            <input id="nestName" className={inputCls} value={nestName} maxLength={40} placeholder={`${childName.trim() || "Your child"}'s Stock Nest`} onChange={(e) => { setNestName(e.target.value); setNameTouched(true); }} />
+          </Section>
+
+          {/* 2 — stocks */}
+          <Section n={2} icon={LineChart} title="Stocks family can gift" sub={`Choose up to 6. ${picks.length}/6 picked.`}>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {STOCKS.map((s) => {
+                const on = picks.includes(s.ticker);
+                return (
+                  <button key={s.ticker} type="button" onClick={() => togglePick(s.ticker)} aria-pressed={on}
+                    className={clsx("relative flex items-center gap-2.5 rounded-2xl border-2 p-2.5 text-left transition", on ? "border-forest bg-forest-soft" : "border-line bg-paper hover:border-ink-3")}>
+                    <StockLogo ticker={s.ticker} size={34} />
+                    <span className="min-w-0 leading-tight"><b className="block truncate text-[15px]">{s.name}</b><span className="text-xs text-ink-3">{s.ticker}</span></span>
+                    {on && <span className="absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-forest text-white"><Check size={12} strokeWidth={3} /></span>}
+                  </button>
+                );
+              })}
             </div>
-          )}
+            {errors.picks ? <p className="mt-2 text-sm text-error">{errors.picks}</p> : <p className="mt-2.5 text-sm text-ink-3">Only tokenized stocks available on Base. You can change these anytime.</p>}
+          </Section>
+
+          {/* 3 — gift rules */}
+          <Section n={3} icon={CalendarHeart} title="Gift rules" sub="You decide these once. Every gift follows them, so givers don't have to.">
+            <p className="mb-2 text-sm font-semibold">When can gifts be opened?</p>
+            <div className="grid grid-cols-2 gap-2">
+              {([["now", Sparkles, "When they arrive", "You accept them any time"], ["date", CalendarHeart, "On a special day", "Birthday, holiday…"]] as const).map(([id, Icon, t, d]) => {
+                const on = opensMode === id;
+                return (
+                  <button key={id} type="button" aria-pressed={on} onClick={() => { setOpensMode(id); if (id === "date" && !opensOn) setOpensOn(isoDay(30)); }}
+                    className={clsx("flex items-start gap-2.5 rounded-2xl border-2 p-3 text-left transition", on ? "border-forest bg-forest-soft" : "border-line bg-paper hover:border-ink-3")}>
+                    <span className={clsx("grid h-9 w-9 shrink-0 place-items-center rounded-xl", on ? "bg-forest text-white" : "bg-sand text-forest")}><Icon size={17} /></span>
+                    <span className="leading-tight"><b className="block text-[15px]">{t}</b><span className="text-[13px] text-ink-3">{d}</span></span>
+                  </button>
+                );
+              })}
+            </div>
+            {opensMode === "date" && (
+              <div className="mt-2.5">
+                <input type="date" aria-label="Gifts open on" className={inputCls} value={opensOn} min={isoDay(1)} onChange={(e) => setOpensOn(e.target.value)} />
+                <p className="mt-1.5 text-sm text-ink-3">{opensOn ? <>Gifts stay wrapped until <b className="text-ink">{fmtDay(opensOn)}</b>, like presents under the tree.</> : "Pick the day gifts open."}</p>
+              </div>
+            )}
+
+            <p className="mb-2 mt-5 text-sm font-semibold">How long do you have to accept a gift?</p>
+            <div className="grid grid-cols-4 gap-1.5 rounded-2xl bg-sand p-1">
+              {ACCEPT_WINDOWS.map((w) => (
+                <button key={w.secs} type="button" aria-pressed={acceptWindow === w.secs} onClick={() => setAcceptWindow(w.secs)}
+                  className={clsx("rounded-xl px-1 py-2 text-sm font-semibold leading-tight transition", acceptWindow === w.secs ? "bg-paper text-forest shadow-soft" : "text-ink-2")}>
+                  {w.label}{"note" in w && <span className="block text-[11px] font-medium text-ink-3">{w.note}</span>}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2.5 flex gap-2 text-sm text-ink-3">
+              <Undo2 size={16} className="mt-0.5 shrink-0 text-forest" />
+              <span>Each gift waits in escrow until you accept it{opensMode === "date" && opensOn ? " (from the day gifts open)" : ""}. If you don&apos;t within {acceptWindowLabel(acceptWindow)}, it goes back to the giver, so nothing is ever lost.</span>
+            </p>
+          </Section>
+
+          {/* 4 — note */}
+          <Section n={4} icon={MessageCircleHeart} title="A note for family & friends" sub="Shown at the top of the gift page.">
+            <Label htmlFor="note" first>Your note</Label>
+            <textarea id="note" className={clsx(inputCls, "font-display min-h-24 text-[17px] italic")} value={note} maxLength={180} onChange={(e) => setNote(e.target.value)}
+              placeholder={`Instead of another toy this year, help us give ${childName.trim() || "our child"} a piece of the companies shaping their future.`} />
+            <div className="grid gap-x-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="parents" hint="signed as">From</Label>
+                <input id="parents" className={inputCls} placeholder="e.g. Daniel & Grace" value={parentNames} onChange={(e) => setParentNames(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="goal" hint="optional">Goal</Label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-ink-2">$</span>
+                  <input id="goal" className={clsx(inputCls, "num pl-8")} inputMode="numeric" value={goal ? Number(goal).toLocaleString("en-US") : ""} placeholder="5,000" onChange={(e) => setGoal(e.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 9))} />
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-sand px-4 py-3.5">
+              <div><b className="text-[15px]">Show gift amounts publicly</b><div className="text-sm text-ink-3">Off: only you see amounts. Everyone sees messages.</div></div>
+              <Toggle on={showAmounts} onChange={setShowAmounts} label="Show amounts publicly" />
+            </div>
+          </Section>
+
+          {/* 5 — first gift */}
+          <Section n={5} icon={Gift} title="Start it off yourself" sub="Optional. Family is more likely to give when the nest isn't empty."
+            right={<Toggle on={firstOn} onChange={setFirstOn} label="Add the first gift yourself" />}>
+            {firstOn ? (
+              <>
+                <p className="mb-2 text-sm font-semibold">Stock</p>
+                <div className="flex flex-wrap gap-2">
+                  {picks.map((t) => (
+                    <button key={t} type="button" onClick={() => setFirstPick(t)} aria-pressed={firstTicker === t}
+                      className={clsx("flex items-center gap-2 rounded-full border-2 py-1 pl-1 pr-3 text-sm font-semibold transition", firstTicker === t ? "border-forest bg-forest-soft" : "border-line bg-paper hover:border-ink-3")}>
+                      <StockLogo ticker={t} size={24} />{stockBy(t).name}
+                    </button>
+                  ))}
+                </div>
+                <p className="mb-2 mt-4 text-sm font-semibold">Amount (USDC)</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {[10, 25, 50, 100].map((a) => (
+                    <button key={a} type="button" onClick={() => setFirstAmount(a)} aria-pressed={firstAmount === a}
+                      className={clsx("num h-12 rounded-xl border-2 font-bold transition", firstAmount === a ? "border-forest bg-forest text-white" : "border-line bg-paper")}>${a}</button>
+                  ))}
+                </div>
+                <Label htmlFor="firstMsg" hint="optional">Your message</Label>
+                <input id="firstMsg" className={inputCls} maxLength={240} value={firstMsg} onChange={(e) => setFirstMsg(e.target.value)}
+                  placeholder={`Welcome to your nest, ${childName.trim() || "little one"}!`} />
+                <p className="mt-2 text-sm text-ink-3">
+                  {onchainEnabled
+                    ? <>When you tap Create, your wallet opens to set up {childName.trim() || "your child"}&apos;s vault on {networkName} and send this gift{opensMode === "date" ? "" : ", then accept it into the nest"}. The nest is only finished once your gift is in.</>
+                    : <>Your gift is added as the nest is created.</>}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-ink-3">Switch on to add a stock gift of your own before you share the link.</p>
+            )}
+          </Section>
         </div>
 
         {error && <p role="alert" className="mt-5 rounded-xl bg-error-soft px-4 py-3 text-sm font-semibold text-error">{error}</p>}
@@ -285,7 +361,7 @@ export default function CreatePage() {
           </button>
         )}
         <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-sm text-ink-3"><ShieldCheck size={15} />No personal details go onchain. Not available to US persons.</p>
-      </Card>
+      </div>
 
       {/* live preview */}
       <div className="lg:sticky lg:top-24">
@@ -303,6 +379,7 @@ export default function CreatePage() {
                 <span key={t} className="flex items-center gap-2 rounded-full bg-sand py-1 pl-1 pr-3 text-[13px] font-semibold"><StockLogo ticker={t} size={24} />{stockBy(t).name}</span>
               ))}
             </div>
+            {rules.opensOn && <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-honey-soft px-3 py-1 text-[13px] font-semibold"><CalendarHeart size={14} />Gifts open {fmtDay(rules.opensOn)}</div>}
             <div className="num mt-4 text-sm text-ink-3">{goalNum > 0 ? `Goal $${goalNum.toLocaleString()} in stock gifts` : "No goal set"}</div>
             <div className="mt-4 h-[52px] rounded-full bg-forest text-base font-bold leading-[52px] text-white">🎁 Gift a Stock</div>
           </div>

@@ -15,6 +15,8 @@ create table if not exists public.nests (
   goal               numeric,
   picks              text[] not null,
   show_amounts       boolean not null default true,
+  opens_on           date,
+  accept_window      integer,
   manage_token_hash  text,
   created_at         timestamptz not null default now(),
   chain_nest_id      integer,
@@ -66,3 +68,7 @@ alter table public.gifts add column if not exists refund_reason text;
 alter table public.gifts add column if not exists settle_tx_hash text;
 alter table public.gifts drop constraint if exists gifts_status_check;
 alter table public.gifts add constraint gifts_status_check check (status in ('pending','usdc_received','buying','delivered','returned','failed'));
+
+-- Upgrade: gift rules set by the parent.
+alter table public.nests add column if not exists opens_on date;
+alter table public.nests add column if not exists accept_window integer;

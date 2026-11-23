@@ -37,6 +37,7 @@ export async function uploadPhoto(dataUrl: string): Promise<string> {
 export type CreateNestBody = {
   childName: string; nestName?: string; avatar: Nest["avatar"]; photo?: string; showPhoto: boolean;
   note: string; parentNames: string; goal?: number; picks: string[]; showAmounts: boolean;
+  opensOn?: string; acceptWindow?: number;
 };
 export const createNest = (body: CreateNestBody) => call<{ slug: string; manageToken: string }>("/api/nests", json("POST", body));
 

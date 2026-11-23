@@ -30,6 +30,8 @@ export async function POST(req: Request) {
     goal: input.goal,
     picks: input.picks,
     showAmounts: input.showAmounts,
+    opensOn: input.opensOn,
+    acceptWindow: input.acceptWindow,
     gifts: [],
     createdAt: new Date().toISOString(),
     manageTokenHash: hashToken(manageToken),
