@@ -2,20 +2,20 @@
 
 import clsx from "clsx";
 import { Check, Copy, Eye, Gift, ShieldCheck, Wallet } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useRef, useState } from "react";
 import { AVATAR_KINDS, ChildAvatar } from "@/components/ChildAvatar";
 import { Celebration } from "@/components/Celebration";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { StockLogo } from "@/components/StockLogo";
 import { Button, Card, Toggle, useToast } from "@/components/ui";
-import type { AvatarKind } from "@/lib/nests";
-import { createNest, saveOwned, uploadPhoto } from "@/lib/api";
+import type { AvatarKind, Gift as GiftT } from "@/lib/nests";
+import { createNest, saveOwned, sendGift, syncGift, uploadPhoto } from "@/lib/api";
 import { networkName, onchainEnabled } from "@/lib/chain";
-import { connectWallet, createOnchainNest, hasBrowserWallet, walletError } from "@/lib/wallet";
+import { claimOnchainGift, connectWallet, createOnchainNest, hasBrowserWallet, sendStockGift, walletError } from "@/lib/wallet";
 
 type Created = { slug: string; token: string; nestName: string; childName: string; avatar: AvatarKind; photo?: string; showPhoto: boolean };
 import { STOCKS, stockBy } from "@/lib/stocks";
+import { shares, usd } from "@/lib/format";
 
 const Label = ({ children, htmlFor, hint }: { children: React.ReactNode; htmlFor?: string; hint?: string }) => (
   <label htmlFor={htmlFor} className="mb-2 mt-5 block text-sm font-semibold">{children} {hint && <span className="font-normal text-ink-3">({hint})</span>}</label>
@@ -48,16 +48,58 @@ export default function CreatePage() {
   const [firstAmount, setFirstAmount] = useState(50);
   const [firstMsg, setFirstMsg] = useState("");
   const firstTicker = picks.includes(firstPick) ? firstPick : picks[0] ?? "AAPL";
-  const router = useRouter();
+  const [progress, setProgress] = useState("");
+  const [firstGift, setFirstGift] = useState<GiftT | null>(null);
+  // Nest saved server-side but the first gift didn't finish yet: retries reuse it instead of making a duplicate.
+  const draft = useRef<{ slug: string; token: string; finalName: string; photo?: string; chainNestId?: number } | null>(null);
 
-  const firstGiftHref = (slug: string) =>
-    `/n/${slug}/gift?from=parent&t=${firstTicker}&amt=${firstAmount}&msg=${encodeURIComponent(firstMsg.trim())}`;
+  /** Parent's own first gift, done before the nest is shown as ready: vault → gift → accept. */
+  async function runFirstGift(d: NonNullable<typeof draft.current>): Promise<GiftT> {
+    const from = parentNames.trim() || "Mum & Dad";
+    const message = firstMsg.trim();
+    const occasion = "💛 Just because";
+    if (!onchainEnabled) {
+      setProgress("Adding your gift…");
+      return (await sendGift(d.slug, { mode: "buy", ticker: firstTicker, usd: firstAmount, from, isPrivate: false, occasion, message })).gift;
+    }
+    setProgress("Opening your wallet…");
+    const wallet = await connectWallet(hasBrowserWallet() ? "injected" : "smart");
+    if (!d.chainNestId) {
+      setProgress(`Creating ${childName.trim()}'s vault on ${networkName}…`);
+      const nestTx = await createOnchainNest(wallet, d.slug);
+      setProgress("Linking the vault…");
+      const res = await fetch(`/api/nests/${encodeURIComponent(d.slug)}/chain`, {
+        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${d.token}` }, body: JSON.stringify({ txHash: nestTx }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't link the vault.");
+      d.chainNestId = Number(data.chainNestId);
+      setVault("done");
+    }
+    setProgress("Getting a live price…");
+    const qr = await fetch("/api/quote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticker: firstTicker }) });
+    const quote = await qr.json();
+    if (!qr.ok) throw new Error(quote.error || "Couldn't get a price right now.");
+    const expiresAt = Math.floor(Date.now() / 1000) + 30 * 86400 + 120;
+    const txHash = await sendStockGift({ wallet, nestId: d.chainNestId, usdAmount: firstAmount, quote, message, unlockAt: 0, expiresAt, onStep: setProgress });
+    setProgress("Recording your gift…");
+    let { gift } = await sendGift(d.slug, { mode: "buy", ticker: firstTicker, txHash, from, isPrivate: false, occasion, message });
+    // You're the giver and the guardian, so accept it into the nest right away.
+    if (gift.chainGiftId) {
+      try {
+        setProgress("Accepting it into the nest…");
+        const claimTx = await claimOnchainGift(wallet, gift.chainGiftId);
+        gift = (await syncGift(d.slug, gift.id, claimTx)).gift;
+      } catch { /* stays "waiting to be accepted"; they can accept it from the dashboard */ }
+    }
+    return gift;
+  }
 
-  /** Vault first (so the gift is real onchain), then straight into the prefilled gift. */
-  async function sendFirstGift() {
-    if (!created) return;
-    if (onchainEnabled && vault !== "done" && !(await setUpVault())) return;
-    router.push(firstGiftHref(created.slug));
+  function finish(d: NonNullable<typeof draft.current>, gift: GiftT | null) {
+    saveOwned(d.slug, d.token);
+    draft.current = null;
+    setFirstGift(gift);
+    setCreated({ slug: d.slug, token: d.token, nestName: d.finalName, childName: childName.trim(), avatar, photo, showPhoto: !!photo && showPhoto });
   }
 
   async function setUpVault(): Promise<boolean> {
@@ -97,19 +139,26 @@ export default function CreatePage() {
     setSaving(true);
     setError(null);
     try {
-      const photoUrl = photo ? await uploadPhoto(photo) : undefined;
-      const finalName = nestName.trim() || `${childName.trim()}'s Stock Nest`;
-      const { slug, manageToken } = await createNest({
-        childName: childName.trim(), nestName: finalName, avatar, photo: photoUrl, showPhoto: !!photo && showPhoto,
-        note: note.trim(), parentNames: parentNames.trim(), goal: goalNum > 0 ? Math.round(goalNum) : undefined, picks, showAmounts,
-      });
-      saveOwned(slug, manageToken);
-      setVault("none");
-      setCreated({ slug, token: manageToken, nestName: finalName, childName: childName.trim(), avatar, photo, showPhoto: !!photo && showPhoto });
+      let d = draft.current;
+      if (!d) {
+        setProgress("Creating your nest…");
+        const photoUrl = photo ? await uploadPhoto(photo) : undefined;
+        const finalName = nestName.trim() || `${childName.trim()}'s Stock Nest`;
+        const { slug, manageToken } = await createNest({
+          childName: childName.trim(), nestName: finalName, avatar, photo: photoUrl, showPhoto: !!photo && showPhoto,
+          note: note.trim(), parentNames: parentNames.trim(), goal: goalNum > 0 ? Math.round(goalNum) : undefined, picks, showAmounts,
+        });
+        d = { slug, token: manageToken, finalName, photo: photoUrl };
+        setVault("none");
+      }
+      if (!firstOn) return finish(d, null);
+      draft.current = d;
+      finish(d, await runFirstGift(d));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+      setError(e instanceof Error && !("code" in e) && !("shortMessage" in e) ? e.message : walletError(e));
     } finally {
       setSaving(false);
+      setProgress("");
     }
   }
 
@@ -216,7 +265,11 @@ export default function CreatePage() {
               <label htmlFor="firstMsg" className="mb-2 mt-4 block text-sm font-semibold">Your message <span className="font-normal text-ink-3">(optional)</span></label>
               <input id="firstMsg" className={inputCls} maxLength={240} value={firstMsg} onChange={(e) => setFirstMsg(e.target.value)}
                 placeholder={`Welcome to your nest, ${childName.trim() || "little one"}!`} />
-              <p className="mt-2 text-sm text-ink-3">After you create the nest, we&apos;ll set up {childName.trim() || "your child"}&apos;s vault and take you straight to confirm this gift with your wallet.</p>
+              <p className="mt-2 text-sm text-ink-3">
+                {onchainEnabled
+                  ? <>When you tap Create, your wallet opens to set up {childName.trim() || "your child"}&apos;s vault on {networkName}, send this gift and accept it into the nest (a few confirmations). The nest is only finished once your gift is in.</>
+                  : <>Your gift is added as the nest is created.</>}
+              </p>
             </div>
           )}
         </div>
@@ -224,8 +277,13 @@ export default function CreatePage() {
         {error && <p role="alert" className="mt-5 rounded-xl bg-error-soft px-4 py-3 text-sm font-semibold text-error">{error}</p>}
         <Button block className="mt-6" onClick={submit} disabled={!valid || saving}>
           {saving && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-          {saving ? "Creating your nest…" : firstOn ? `Create nest & add my $${firstAmount} gift` : "Create Stock Nest"}
+          {saving ? progress || "Creating your nest…" : !firstOn ? "Create Stock Nest" : draft.current ? `Try again: add my $${firstAmount} gift` : `Create nest & add my $${firstAmount} gift`}
         </Button>
+        {!saving && error && draft.current && (
+          <button type="button" className="mt-2 w-full text-center text-sm font-semibold text-forest underline" onClick={() => { setError(null); finish(draft.current!, null); }}>
+            Skip the gift and finish creating the nest
+          </button>
+        )}
         <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-sm text-ink-3"><ShieldCheck size={15} />No personal details go onchain. Not available to US persons.</p>
       </Card>
 
@@ -272,23 +330,20 @@ export default function CreatePage() {
             </button>
           </div>
         )}
-        {created && firstOn && (
-          <div className="mt-3 rounded-2xl border-2 border-forest bg-forest-soft/40 p-3.5 text-left">
-            <div className="flex items-center gap-3">
-              <StockLogo ticker={firstTicker} size={36} />
-              <div className="min-w-0 flex-1">
-                <b className="block text-[15px]">Your first gift: ${firstAmount} of {stockBy(firstTicker).name}</b>
-                {firstMsg.trim() && <span className="font-display block truncate text-sm italic text-ink-2">&ldquo;{firstMsg.trim()}&rdquo;</span>}
-              </div>
+        {created && firstGift && (
+          <div className="mt-3 flex items-center gap-3 rounded-2xl border-2 border-forest bg-forest-soft/40 p-3.5 text-left">
+            <StockLogo ticker={firstGift.ticker} size={36} />
+            <div className="min-w-0 flex-1">
+              <b className="flex items-center gap-1.5 text-[15px]"><Check size={16} className="text-forest" />First gift in: {shares(firstGift.shares)} {stockBy(firstGift.ticker).name}</b>
+              <span className="text-sm text-ink-2">
+                {firstGift.status === "pending"
+                  ? <>{usd(firstGift.usd, 2)} is waiting for you to accept it on your dashboard.</>
+                  : <>{usd(firstGift.usd, 2)} from you{onchainEnabled && firstGift.status === "delivered" ? <>, delivered to {created.childName}&apos;s vault on {networkName}</> : null}.</>}
+              </span>
             </div>
-            <Button block size="sm" className="mt-3" onClick={sendFirstGift} disabled={vault === "busy"}>
-              <Gift size={15} />{vault === "busy" ? `Setting up ${created.childName}'s vault…` : "Send my gift"}
-            </Button>
-            {onchainEnabled && vault !== "done" && <p className="mt-2 text-xs text-ink-3">Your wallet opens twice: once to create {created.childName}&apos;s vault on {networkName} (you become the guardian), then to confirm your gift.</p>}
-            {vaultError && <p role="alert" className="mt-2 text-sm font-semibold text-error">{vaultError}</p>}
           </div>
         )}
-        {created && !firstOn && (
+        {created && !firstGift && (
           <div className="mt-3 rounded-2xl border border-line p-3.5 text-left">
             <b className="block text-[15px]">Start it off yourself <span className="font-normal text-ink-3">(optional)</span></b>
             <p className="mt-0.5 text-sm text-ink-2">Nests fill faster when family opens the link and sees the first gift is already there.</p>
