@@ -1,11 +1,13 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export const THEME_KEY = "stocknest.theme";
 
 export function ThemeToggle() {
+  const pathname = usePathname();
   const [theme, setTheme] = useState<"light" | "dark" | null>(null);
 
   useEffect(() => {
@@ -19,6 +21,7 @@ export function ThemeToggle() {
     setTheme(next);
   }
 
+  if (pathname === "/") return null; // hidden on the home page
   return (
     <button
       onClick={toggle}
