@@ -111,7 +111,7 @@ export default function Home() {
             {[
               { n: 1, icon: Sprout, title: "Create a Stock Nest", body: "Add your child's name and photo, then choose the stocks family can gift, like Apple, NVIDIA or Tesla." },
               { n: 2, icon: HeartHandshake, title: "Share one link", body: "Send it on WhatsApp, Telegram or by text. Everyone uses one page, with no wallet addresses or brokerage accounts." },
-              { n: 3, icon: MessageCircleHeart, title: "Family gifts stocks", body: "They pick a stock and an amount, then add a message. USDC buys the tokenized share, which goes into the nest." },
+              { n: 3, icon: MessageCircleHeart, title: "Family gifts stocks", body: "They pick a stock, an amount and a message, and can lock it until a birthday. Parents accept the gift into the nest, and if it can't be delivered, the giver gets their money back." },
             ].map(({ n, icon: Icon, title, body }) => (
               <Card key={n} className="relative overflow-hidden">
                 <span className="font-display absolute -right-2 -top-6 text-[120px] font-bold text-forest-soft">{n}</span>

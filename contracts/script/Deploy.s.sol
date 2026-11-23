@@ -10,6 +10,7 @@ import {StockNest} from "../src/StockNest.sol";
 /// @notice Deploys the StockNest testnet stack to Base Sepolia.
 ///   PRIVATE_KEY   deployer (becomes owner, treasury and guardian of the demo nests)
 ///   QUOTE_SIGNER  address whose key the web server uses to sign live price quotes
+///   DEMO_GUARDIAN (optional) wallet that becomes guardian of the demo nests, so it can accept gifts
 /// Usage: forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast
 contract Deploy is Script {
     address deployer;
@@ -24,6 +25,7 @@ contract Deploy is Script {
         uint256 pk = vm.envUint("PRIVATE_KEY");
         address signer = vm.envAddress("QUOTE_SIGNER");
         deployer = vm.addr(pk);
+        address guardian = vm.envOr("DEMO_GUARDIAN", deployer);
 
         vm.startBroadcast(pk);
         usdc = new TestUSDC();
@@ -43,8 +45,8 @@ contract Deploy is Script {
         _token("MSTR", "Strategy", true);
 
         // Demo nests for the seeded families on the website.
-        uint256 amelia = stockNest.createNestFor(keccak256(bytes("amelia")), deployer);
-        uint256 tobi = stockNest.createNestFor(keccak256(bytes("tobi")), deployer);
+        uint256 amelia = stockNest.createNestFor(keccak256(bytes("amelia")), guardian);
+        uint256 tobi = stockNest.createNestFor(keccak256(bytes("tobi")), guardian);
         vm.stopBroadcast();
 
         _write(signer, amelia, tobi);

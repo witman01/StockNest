@@ -6,7 +6,9 @@ import { stockBy } from "./stocks";
 
 export type AvatarKind = "amelia" | "tobi" | "sprout" | "bear";
 export type GiftMode = "buy" | "own";
-export type GiftStatus = "usdc_received" | "buying" | "delivered" | "returned" | "failed";
+/** pending = sent onchain and held in escrow until the parent accepts it. */
+export type GiftStatus = "pending" | "usdc_received" | "buying" | "delivered" | "returned" | "failed";
+export type RefundReason = "expired" | "ineligible";
 
 export type Gift = {
   id: string;
@@ -22,6 +24,13 @@ export type Gift = {
   status: GiftStatus;
   createdAt: string;
   txHash?: string;
+  /** Onchain escrow gift (StockNest.gifts id) and its dates. */
+  chainGiftId?: number;
+  unlockAt?: string;
+  expiresAt?: string;
+  refundReason?: RefundReason;
+  /** The claim or refund transaction. */
+  settleTxHash?: string;
 };
 
 export type Nest = {
@@ -135,7 +144,7 @@ export function toPublicNest(nest: Nest): PublicNest {
     ...rest,
     photo: nest.showPhoto ? nest.photo : undefined,
     totals,
-    gifts: gifts.filter(countsTowardNest).map((g) => ({
+    gifts: gifts.filter((g) => countsTowardNest(g) || g.status === "pending").map((g) => ({
       ...g,
       from: g.isPrivate ? "A family friend" : g.from,
       usd: nest.showAmounts && !g.isPrivate ? g.usd : 0,

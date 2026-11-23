@@ -51,13 +51,20 @@ export const RESTRICTED = new Set(["MSTR"]);
 
 export const stockNestAbi = parseAbi([
   "function createNest(bytes32 slugHash) returns (uint256)",
-  "function giftWithUSDC(uint256 nestId, address token, uint256 usdcAmount, uint256 price, uint64 expiry, bytes signature, bytes32 memoHash) returns (uint256)",
+  "function sendGift(uint256 nestId, address token, uint256 usdcAmount, uint256 price, uint64 quoteExpiry, bytes signature, uint64 unlockAt, uint64 expiresAt, bytes32 memoHash) returns (uint256)",
+  "function claimGift(uint256 giftId) returns (bool)",
+  "function refundGift(uint256 giftId)",
+  "function isEligible(uint256 nestId, address token) view returns (bool)",
+  "function gifts(uint256) view returns (uint256 nestId, address giver, address token, uint256 usdcAmount, uint256 rawShares, uint256 uiShares, uint64 unlockAt, uint64 expiresAt, uint8 status, bytes32 memoHash)",
   "function nests(uint256) view returns (address vault, address guardian, bytes32 slugHash)",
   "function nestIdBySlug(bytes32) view returns (uint256)",
   "function quoteHash(address token, uint256 price, uint64 expiry) view returns (bytes32)",
   "event NestCreated(uint256 indexed nestId, bytes32 indexed slugHash, address vault, address indexed guardian)",
-  "event GiftDelivered(uint256 indexed nestId, address indexed giver, address indexed token, uint256 usdcIn, uint256 uiShares, uint256 price, bytes32 memoHash)",
-  "event GiftReturned(uint256 indexed nestId, address indexed giver, address indexed token, uint256 usdcRefunded, bytes32 memoHash)",
+  "event GiftSent(uint256 indexed giftId, uint256 indexed nestId, address indexed giver, address token, uint256 usdcAmount, uint256 uiShares, uint256 price, uint64 unlockAt, uint64 expiresAt, bytes32 memoHash)",
+  "event GiftClaimed(uint256 indexed giftId, uint256 indexed nestId, address indexed token, uint256 uiShares)",
+  "event GiftRefunded(uint256 indexed giftId, uint256 indexed nestId, address indexed giver, uint8 reason)",
+  "error SlugTaken()", "error UnknownNest()", "error NotListed()", "error BadAmount()", "error QuoteExpired()", "error BadQuote()",
+  "error BadDates()", "error UnknownGift()", "error NotPending()", "error NotGuardian()", "error StillLocked()", "error GiftExpired()", "error NotRefundable()",
 ]);
 
 export const testUsdcAbi = parseAbi([

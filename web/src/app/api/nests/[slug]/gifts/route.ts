@@ -10,9 +10,9 @@ import type { Hex } from "viem";
 
 /**
  * Record a stock gift.
- * DEMO: execution is simulated, so the gift is marked delivered straight away.
- * With contracts, this becomes "usdc_received" and an indexer moves it through
- * buying, then delivered (or returned), as onchain events arrive.
+ * Onchain nests: the gift was sent to the StockNest escrow, so it's recorded as
+ * "pending" until the parent accepts it (or it's refunded). See ./[id]/sync.
+ * Other nests: execution is simulated and the gift is delivered straight away.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   if (rateLimited(req, "gift", 20)) return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
@@ -48,6 +48,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       mode: "buy",
       status: v.status,
       txHash: v.txHash,
+      chainGiftId: v.giftId,
+      unlockAt: v.unlockAt,
+      expiresAt: v.expiresAt,
       createdAt: new Date().toISOString(),
     };
     await repo.addGift(slug, gift);

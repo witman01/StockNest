@@ -21,6 +21,7 @@ export interface Repo {
   createNest(nest: NestRecord): Promise<void>;
   updateNest(slug: string, patch: Partial<Nest>): Promise<void>;
   addGift(slug: string, gift: Gift): Promise<void>;
+  updateGift(slug: string, id: string, patch: Partial<Gift>): Promise<void>;
   savePhoto(id: string, bytes: Buffer, ext: "jpg" | "png" | "webp"): Promise<string>;
   readPhoto(file: string): Promise<Buffer | null>;
 }
@@ -81,6 +82,12 @@ class FileRepo implements Repo {
       n.gifts.unshift(gift);
     });
   }
+  updateGift(slug: string, id: string, patch: Partial<Gift>) {
+    return this.mutate((db) => {
+      const g = db.nests.find((x) => x.slug === slug)?.gifts.find((x) => x.id === id);
+      if (g) Object.assign(g, patch);
+    });
+  }
   async savePhoto(id: string, bytes: Buffer, ext: "jpg" | "png" | "webp") {
     await fs.mkdir(UPLOADS, { recursive: true });
     await fs.writeFile(path.join(UPLOADS, `${id}.${ext}`), bytes);
@@ -105,6 +112,7 @@ type NestRow = {
 type GiftRow = {
   id: string; nest_slug: string; giver: string; is_private: boolean; ticker: string; shares: number; usd: number;
   occasion: string; message: string; mode: Gift["mode"]; status: Gift["status"]; tx_hash: string | null; created_at: string;
+  chain_gift_id: number | null; unlock_at: string | null; expires_at: string | null; refund_reason: string | null; settle_tx_hash: string | null;
 };
 
 const toNestRow = (n: NestRecord): NestRow => ({
@@ -116,6 +124,8 @@ const toNestRow = (n: NestRecord): NestRow => ({
 const toGiftRow = (slug: string, g: Gift): GiftRow => ({
   id: g.id, nest_slug: slug, giver: g.from, is_private: g.isPrivate, ticker: g.ticker, shares: g.shares, usd: g.usd,
   occasion: g.occasion, message: g.message, mode: g.mode, status: g.status, tx_hash: g.txHash ?? null, created_at: g.createdAt,
+  chain_gift_id: g.chainGiftId ?? null, unlock_at: g.unlockAt ?? null, expires_at: g.expiresAt ?? null,
+  refund_reason: g.refundReason ?? null, settle_tx_hash: g.settleTxHash ?? null,
 });
 const fromRows = (r: NestRow, gifts: GiftRow[]): NestRecord => ({
   slug: r.slug, childName: r.child_name, nestName: r.nest_name, avatar: r.avatar, photo: r.photo_url ?? undefined,
@@ -126,6 +136,8 @@ const fromRows = (r: NestRow, gifts: GiftRow[]): NestRecord => ({
   gifts: gifts.map((g) => ({
     id: g.id, from: g.giver, isPrivate: g.is_private, ticker: g.ticker, shares: Number(g.shares), usd: Number(g.usd),
     occasion: g.occasion, message: g.message, mode: g.mode, status: g.status, txHash: g.tx_hash ?? undefined, createdAt: g.created_at,
+    chainGiftId: g.chain_gift_id ?? undefined, unlockAt: g.unlock_at ?? undefined, expiresAt: g.expires_at ?? undefined,
+    refundReason: (g.refund_reason as Gift["refundReason"]) ?? undefined, settleTxHash: g.settle_tx_hash ?? undefined,
   })),
 });
 
@@ -180,6 +192,15 @@ class SupabaseRepo implements Repo {
   }
   async addGift(slug: string, gift: Gift) {
     const { error } = await this.db.from("gifts").insert(toGiftRow(slug, gift));
+    if (error) throw error;
+  }
+  async updateGift(slug: string, id: string, patch: Partial<Gift>) {
+    const row: Partial<GiftRow> = {};
+    if (patch.status) row.status = patch.status;
+    if (patch.shares !== undefined) row.shares = patch.shares;
+    if (patch.refundReason) row.refund_reason = patch.refundReason;
+    if (patch.settleTxHash) row.settle_tx_hash = patch.settleTxHash;
+    const { error } = await this.db.from("gifts").update(row).eq("nest_slug", slug).eq("id", id);
     if (error) throw error;
   }
   async savePhoto(id: string, bytes: Buffer, ext: "jpg" | "png" | "webp") {

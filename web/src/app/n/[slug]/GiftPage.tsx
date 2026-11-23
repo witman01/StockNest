@@ -1,6 +1,8 @@
 "use client";
 
 import { Share2 } from "lucide-react";
+import { useState } from "react";
+import { EscrowActions } from "@/components/EscrowActions";
 import { ChildAvatar } from "@/components/ChildAvatar";
 import { StockLogo } from "@/components/StockLogo";
 import { AllocationBar, Button, Card, Chip, ProgressRing, SeriesDot, shareLink, useToast } from "@/components/ui";
@@ -11,7 +13,8 @@ import { shares, shortDate, usd } from "@/lib/format";
 
 const AV_COLORS = ["#0C513F", "#4E8F86", "#B7834F", "#3E5A73", "#8A948F", "#6B4226"];
 
-export function GiftPage({ nest }: { nest: PublicNest }) {
+export function GiftPage({ nest: initial }: { nest: PublicNest }) {
+  const [nest, setNest] = useState(initial);
   const { toast, toastNode } = useToast();
   const t = nest.totals;
   const share = () => shareLink(window.location.href, `Gift ${nest.childName} a stock 🎁`, toast);
@@ -85,13 +88,15 @@ export function GiftPage({ nest }: { nest: PublicNest }) {
                 <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1"><b>{g.from}</b><Chip tone="honey" xs>{g.occasion}</Chip></div>
                 <div className="mt-1 flex items-center gap-2 text-sm text-ink-2">
                   <StockLogo ticker={g.ticker} size={22} />
-                  <span className="num">gifted <b className="text-ink">{g.shares ? `${shares(g.shares)} ` : ""}{s.name}</b>{g.usd ? ` (${usd(g.usd)})` : ""}{g.mode === "own" ? " from their own shares" : ""}</span>
+                  <span className="num">{g.status === "pending" ? "is gifting" : "gifted"} <b className="text-ink">{g.shares ? `${shares(g.shares)} ` : ""}{s.name}</b>{g.usd ? ` (${usd(g.usd)})` : ""}{g.mode === "own" ? " from their own shares" : ""}</span>
                 </div>
                 {g.message && <p className="font-display my-1.5 break-words text-[17px] italic">&ldquo;{g.message}&rdquo;</p>}
                 <div className="flex flex-wrap items-center gap-3 text-[13px] text-ink-3">
                   <span>{shortDate(g.createdAt)}</span>
-                  {g.status === "buying" ? <Chip tone="pending" xs>Buying stock</Chip> : g.status === "usdc_received" ? <Chip xs>USDC received</Chip> : txUrl(g.txHash ?? "") ? <a href={txUrl(g.txHash!)!} target="_blank" rel="noopener noreferrer"><Chip tone="base" xs>Receipt ↗</Chip></a> : <Chip xs>Simulated</Chip>}
+                  {g.status === "pending" ? <Chip tone="honey" xs>Waiting to be accepted</Chip> : g.status === "buying" ? <Chip tone="pending" xs>Buying stock</Chip> : g.status === "usdc_received" ? <Chip xs>USDC received</Chip> : txUrl(g.txHash ?? "") ? <a href={txUrl(g.txHash!)!} target="_blank" rel="noopener noreferrer"><Chip tone="base" xs>Receipt ↗</Chip></a> : <Chip xs>Simulated</Chip>}
                 </div>
+                <EscrowActions slug={nest.slug} gift={g} role="public"
+                  onUpdated={(u) => setNest({ ...nest, gifts: u.status === "pending" ? nest.gifts.map((x) => (x.id === u.id ? u : x)) : nest.gifts.filter((x) => x.id !== u.id) })} />
               </div>
             </div>
           );

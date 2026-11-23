@@ -42,6 +42,9 @@ export const createNest = (body: CreateNestBody) => call<{ slug: string; manageT
 
 export type GiftBody = { mode: GiftMode; ticker: string; usd?: number; shares?: number; from: string; isPrivate: boolean; occasion: string; message: string; txHash?: string };
 export const sendGift = (slug: string, body: GiftBody) => call<{ gift: Gift }>(`/api/nests/${encodeURIComponent(slug)}/gifts`, json("POST", body));
+/** Refresh an escrow gift from the chain after a claim or refund (txHash links the receipt). */
+export const syncGift = (slug: string, id: string, txHash?: string) =>
+  call<{ gift: Gift }>(`/api/nests/${encodeURIComponent(slug)}/gifts/${encodeURIComponent(id)}/sync`, json("POST", { txHash }));
 
 export const fetchMyNests = (owned: Owned) => call<{ nests: Nest[] }>("/api/parent/nests", json("POST", { owned }));
 export const fetchExampleNests = () => call<{ nests: Nest[] }>("/api/parent/nests", json("POST", { example: true }));

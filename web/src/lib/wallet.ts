@@ -62,6 +62,11 @@ export function walletError(e: unknown): string {
   if (msg.includes("insufficient funds") || msg.includes("exceeds the balance")) return `Your wallet needs a little ${networkName} ETH for gas. Get some free from a faucet, then try again.`;
   if (msg.includes("faucetcooldown")) return "You've used the test USDC faucet in the last hour. Try a smaller gift or wait a bit.";
   if (msg.includes("quoteexpired")) return "The price quote expired. Please try again.";
+  if (msg.includes("notguardian")) return "Only the nest's guardian wallet can accept gifts. Connect the guardian wallet and try again.";
+  if (msg.includes("stilllocked")) return "This gift is still locked until its unlock date.";
+  if (msg.includes("giftexpired")) return "This gift has expired. It can now be refunded to the giver.";
+  if (msg.includes("notrefundable")) return "This gift can't be refunded yet: it hasn't expired and the nest can receive it.";
+  if (msg.includes("notpending")) return "This gift was already accepted or refunded.";
   return err.shortMessage || "Something went wrong in your wallet. Please try again.";
 }
 
@@ -70,13 +75,15 @@ export const memoHash = (message: string) => keccak256(toBytes(message));
 type Quote = { token: Address; price: string; expiry: string; signature: Hex };
 
 /**
- * Send a USDC → stock gift. Smart wallets get one confirmation for
- * [faucet if needed, approve if needed, gift]; other wallets confirm each step.
+ * Send a USDC → stock gift into the StockNest escrow. Smart wallets get one
+ * confirmation for [faucet if needed, approve if needed, send]; other wallets
+ * confirm each step. unlockAt/expiresAt are unix seconds (unlockAt 0 = now).
  */
 export async function sendStockGift(opts: {
-  wallet: Connected; nestId: number; usdAmount: number; quote: Quote; message: string; onStep?: (s: string) => void;
+  wallet: Connected; nestId: number; usdAmount: number; quote: Quote; message: string;
+  unlockAt: number; expiresAt: number; onStep?: (s: string) => void;
 }): Promise<Hex> {
-  const { wallet, nestId, usdAmount, quote, message, onStep } = opts;
+  const { wallet, nestId, usdAmount, quote, message, unlockAt, expiresAt, onStep } = opts;
   const amount = parseUnits(usdAmount.toFixed(2), 6);
   const [balance, allowance, last] = await Promise.all([
     publicClient.readContract({ address: usdcAddress, abi: testUsdcAbi, functionName: "balanceOf", args: [wallet.address] }),
@@ -96,8 +103,8 @@ export async function sendStockGift(opts: {
   calls.push({
     to: stockNestAddress,
     data: encodeFunctionData({
-      abi: stockNestAbi, functionName: "giftWithUSDC",
-      args: [BigInt(nestId), quote.token, amount, BigInt(quote.price), BigInt(quote.expiry), quote.signature, memoHash(message)],
+      abi: stockNestAbi, functionName: "sendGift",
+      args: [BigInt(nestId), quote.token, amount, BigInt(quote.price), BigInt(quote.expiry), quote.signature, BigInt(unlockAt), BigInt(expiresAt), memoHash(message)],
     }),
     label: "Sending your gift",
   });
@@ -113,7 +120,7 @@ export async function sendStockGift(opts: {
         calls: calls.map(({ to, data }) => ({ to, data })),
         ...(paymaster ? { capabilities: { paymasterService: { url: paymaster } } } : {}),
       });
-      onStep?.("Buying your stock on Base");
+      onStep?.("Sending your gift on Base");
       const result = await wallet.client.waitForCallsStatus({ id, timeout: 120_000 });
       const receipts = result.receipts ?? [];
       const last = receipts[receipts.length - 1];
@@ -142,5 +149,25 @@ export async function createOnchainNest(wallet: Connected, slug: string): Promis
     account: wallet.address, chain, address: stockNestAddress, abi: stockNestAbi, functionName: "createNest", args: [keccak256(toBytes(slug))],
   });
   await publicClient.waitForTransactionReceipt({ hash });
+  return hash;
+}
+
+/** Guardian accepts an escrow gift (or it's refunded if the vault isn't eligible). */
+export async function claimOnchainGift(wallet: Connected, giftId: number): Promise<Hex> {
+  const hash = await wallet.client.writeContract({
+    account: wallet.address, chain, address: stockNestAddress, abi: stockNestAbi, functionName: "claimGift", args: [BigInt(giftId)],
+  });
+  const r = await publicClient.waitForTransactionReceipt({ hash });
+  if (r.status !== "success") throw new Error("Accepting the gift failed onchain.");
+  return hash;
+}
+
+/** Anyone can return an expired (or ineligible) gift to its giver. */
+export async function refundOnchainGift(wallet: Connected, giftId: number): Promise<Hex> {
+  const hash = await wallet.client.writeContract({
+    account: wallet.address, chain, address: stockNestAddress, abi: stockNestAbi, functionName: "refundGift", args: [BigInt(giftId)],
+  });
+  const r = await publicClient.waitForTransactionReceipt({ hash });
+  if (r.status !== "success") throw new Error("The refund failed onchain.");
   return hash;
 }

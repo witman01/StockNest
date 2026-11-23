@@ -12,11 +12,13 @@ import { fetchExampleNests, fetchMyNests, getOwned, updateNest } from "@/lib/api
 import { nestTotals, SEED_NESTS, type Gift, type Nest } from "@/lib/nests";
 import { stockBy } from "@/lib/stocks";
 import { txUrl } from "@/lib/chain";
+import { EscrowActions } from "@/components/EscrowActions";
 import { shares, shortDate, usd } from "@/lib/format";
 
-type Filter = "all" | "delivered" | "progress" | "returned";
+type Filter = "all" | "pending" | "delivered" | "progress" | "returned";
 const FILTERS: { id: Filter; label: string; match: (g: Gift) => boolean }[] = [
   { id: "all", label: "All", match: () => true },
+  { id: "pending", label: "To accept", match: (g) => g.status === "pending" },
   { id: "delivered", label: "Delivered", match: (g) => g.status === "delivered" },
   { id: "progress", label: "In progress", match: (g) => g.status === "usdc_received" || g.status === "buying" },
   { id: "returned", label: "Returned", match: (g) => g.status === "returned" || g.status === "failed" },
@@ -66,13 +68,14 @@ function Tracker({ nest, token, toast, toastNode, onSaved }: { nest: Nest; token
   const url = typeof window !== "undefined" ? `${window.location.origin}/n/${nest.slug}` : `/n/${nest.slug}`;
 
   const counts = {
+    pending: nest.gifts.filter((g) => g.status === "pending").length,
     delivered: nest.gifts.filter((g) => g.status === "delivered").length,
     progress: nest.gifts.filter((g) => g.status === "usdc_received" || g.status === "buying").length,
     returned: nest.gifts.filter((g) => g.status === "returned" || g.status === "failed").length,
   };
   const givers = useMemo(() => {
     const m = new Map<string, { name: string; gifts: number; usd: number; private: boolean }>();
-    for (const g of nest.gifts.filter((x) => x.status !== "returned" && x.status !== "failed")) {
+    for (const g of nest.gifts.filter((x) => x.status !== "returned" && x.status !== "failed" && x.status !== "pending")) {
       const k = g.from;
       const e = m.get(k) ?? { name: g.from, gifts: 0, usd: 0, private: g.isPrivate };
       e.gifts++; e.usd += g.usd;
@@ -176,6 +179,8 @@ function Tracker({ nest, token, toast, toastNode, onSaved }: { nest: Nest; token
                   <div className="num mt-0.5 text-sm text-ink-2">{shares(g.shares)} {stockBy(g.ticker).name}{g.mode === "own" ? ", sent from their own shares" : ""}</div>
                   {g.message && <p className="font-display mt-1 break-words italic text-ink-2">&ldquo;{g.message}&rdquo;</p>}
                   <div className="mt-1 text-xs text-ink-3">{shortDate(g.createdAt)}{txUrl(g.txHash ?? "") ? <>, <a className="text-forest underline" href={txUrl(g.txHash!)!} target="_blank" rel="noopener noreferrer">receipt on BaseScan</a></> : g.txHash ? ", simulated" : ""}</div>
+                  <EscrowActions slug={nest.slug} gift={g} role="guardian"
+                    onUpdated={(u) => onSaved({ ...nest, gifts: nest.gifts.map((x) => (x.id === u.id ? u : x)) })} />
                 </div>
                 <div className="text-right"><b className="num">{usd(g.usd)}</b><div className="mt-0.5"><StatusChip status={g.status} /></div></div>
               </div>

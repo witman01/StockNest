@@ -18,6 +18,15 @@ import { priceFor, usePrices } from "@/lib/usePrices";
 
 const OCCASIONS = ["🎂 Birthday", "🎄 Holiday", "🎓 Graduation", "💛 Just because"];
 const AMOUNTS = [10, 25, 50, 100];
+/** How long the parent has to accept before the giver can take the gift back. */
+const WINDOWS = [
+  { id: "30d", label: "30 days", secs: 30 * 86400 },
+  { id: "7d", label: "7 days", secs: 7 * 86400 },
+  { id: "90d", label: "90 days", secs: 90 * 86400 },
+  { id: "demo", label: "6 minutes (demo)", secs: 6 * 60 },
+];
+const fmtDate = (d: Date | string) => new Date(d).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+const fmtDay = (d: Date | string) => new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 type Pay = "email" | "wallet";
 type Phase = "idle" | "signing" | "executing";
 
@@ -45,6 +54,8 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
   const [error, setError] = useState<string | null>(null);
   const [eligible, setEligible] = useState(false);
   const [tracked, setTracked] = useState(0);
+  const [unlockOn, setUnlockOn] = useState(""); // yyyy-mm-dd, empty = can be accepted now
+  const [windowId, setWindowId] = useState(WINDOWS[0].id);
 
   // Order stocks: parents' picks first.
   const list = useMemo(() => {
@@ -71,6 +82,11 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
   }
 
   const onchain = onchainEnabled && !!nest.chainNestId && mode === "buy";
+  const claimWindow = WINDOWS.find((w) => w.id === windowId) ?? WINDOWS[0];
+  const unlockDate = unlockOn ? new Date(`${unlockOn}T00:00:00`) : null;
+  const startsAt = unlockDate && unlockDate.getTime() > Date.now() ? unlockDate : new Date();
+  const expiresDate = new Date(startsAt.getTime() + claimWindow.secs * 1000);
+  const restrictedPick = RESTRICTED.has(stock.ticker);
 
   async function confirmOnchain() {
     setError(null);
@@ -84,12 +100,16 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
       if (!qr.ok) throw new Error(quote.error || "Couldn't get a price right now.");
       setPhase("executing");
       const msg = message.trim();
-      const txHash = await sendStockGift({ wallet, nestId: nest.chainNestId!, usdAmount: amount, quote, message: msg, onStep: setStepMsg });
+      const nowSecs = Math.floor(Date.now() / 1000);
+      const unlockAt = unlockDate ? Math.max(0, Math.floor(unlockDate.getTime() / 1000)) : 0;
+      // +2 minutes so the window still meets the contract minimum after the tx is mined.
+      const expiresAt = Math.max(nowSecs, unlockAt) + claimWindow.secs + 120;
+      const txHash = await sendStockGift({ wallet, nestId: nest.chainNestId!, usdAmount: amount, quote, message: msg, unlockAt, expiresAt, onStep: setStepMsg });
       setStepMsg("Recording your gift…");
       const { gift } = await sendGift(nest.slug, { mode: "buy", ticker: stock.ticker, txHash, from: name.trim(), isPrivate, occasion, message: msg });
       setTracked(0);
       setSent(gift);
-      [1, 2, 3].forEach((n) => setTimeout(() => setTracked(n), 400 + n * 550));
+      setTimeout(() => setTracked(1), 900);
     } catch (e) {
       const m = e instanceof Error && !("code" in e) && !("shortMessage" in e) ? e.message : walletError(e);
       setError(m);
@@ -131,11 +151,18 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
   const nextLabel = step < 4 ? "Continue"
     : phase !== "idle" && stepMsg ? stepMsg
     : phase === "signing" ? "Waiting for your confirmation…"
-    : phase === "executing" ? (mode === "buy" ? `Buying ${stock.name} on Base…` : "Sending on Base…")
+    : phase === "executing" ? (onchain ? "Sending your gift on Base…" : mode === "buy" ? `Buying ${stock.name} on Base…` : "Sending on Base…")
     : mode === "buy" ? `Confirm & gift ${usd(amount, amount % 1 ? 2 : 0)} of ${stock.name}` : `Send ${fmtShares(own)} ${stock.ticker} to ${kid}`;
 
   const returned = sent?.status === "returned";
-  const trackerRows = returned
+  const pending = sent?.status === "pending";
+  const trackerRows = pending
+    ? [
+        { label: "Sent to the StockNest escrow", meta: `${usd(sent!.usd, 2)} USDC` },
+        { label: `Waiting for ${kid}'s parents to accept`, meta: sent!.unlockAt && new Date(sent!.unlockAt) > new Date() ? `opens ${fmtDay(sent!.unlockAt)}` : "any time now" },
+        { label: `${fmtShares(sent!.shares)} ${stock.ticker} delivered to ${kid}'s nest`, meta: networkName },
+      ]
+    : returned
     ? [{ label: "USDC received", meta: usd(sent?.usd ?? 0, 2) }, { label: `${stock.name} isn't allowed for this nest yet`, meta: "policy check" }, { label: "USDC refunded to you", meta: usd(sent?.usd ?? 0, 2) }]
     : sent && isRealTx(sent.txHash)
     ? [{ label: "USDC received", meta: usd(sent.usd, 2) }, { label: `${stock.name} purchased`, meta: `${fmtShares(sent.shares)} ${stock.ticker}` }, { label: `Delivered to ${kid}'s nest`, meta: networkName }]
@@ -262,6 +289,27 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                 </div>
                 <label htmlFor="msg" className="mb-2 mt-5 block text-sm font-semibold">Message for {kid} <span className="font-normal text-ink-3">(optional)</span></label>
                 <textarea id="msg" maxLength={240} className={clsx(inputCls, "font-display min-h-24 text-[17px] italic")} placeholder={`Happy birthday, ${kid}! Own a little piece of the future.`} value={message} onChange={(e) => setMessage(e.target.value)} />
+                {onchain && (
+                  <>
+                    <p className="mb-2 mt-5 text-sm font-semibold">When can {kid}&apos;s parents accept it?</p>
+                    <div className="grid grid-cols-2 rounded-full bg-sand p-1">
+                      {[["", "Right away"], ["date", "On a date"]].map(([v, l]) => (
+                        <button key={l} onClick={() => setUnlockOn(v ? new Date(Date.now() + 30 * 86400e3).toISOString().slice(0, 10) : "")}
+                          className={clsx("rounded-full px-2 py-2.5 text-[15px] font-semibold transition", (v ? !!unlockOn : !unlockOn) ? "bg-paper text-forest shadow-soft" : "text-ink-2")}>{l}</button>
+                      ))}
+                    </div>
+                    {unlockOn && (
+                      <input type="date" aria-label="Unlock date" className={clsx(inputCls, "mt-2.5")} value={unlockOn}
+                        min={new Date().toISOString().slice(0, 10)} onChange={(e) => setUnlockOn(e.target.value)} />
+                    )}
+                    <p className="mt-1.5 text-sm text-ink-3">{unlockOn ? `Locked until ${fmtDay(unlockDate!)}, like opening a present on the day.` : "They can accept it as soon as it arrives."}</p>
+                    <label htmlFor="window" className="mb-2 mt-5 block text-sm font-semibold">If it isn&apos;t accepted within</label>
+                    <select id="window" className={inputCls} value={windowId} onChange={(e) => setWindowId(e.target.value)}>
+                      {WINDOWS.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}
+                    </select>
+                    <p className="mt-1.5 text-sm text-ink-3">…you can take it back. Unclaimed gifts expire on {fmtDate(expiresDate)}.</p>
+                  </>
+                )}
               </div>
             )}
 
@@ -294,7 +342,12 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                     ["Stock", <span key="s" className="inline-flex items-center gap-2"><StockLogo ticker={stock.ticker} size={22} />{stock.name} ({stock.ticker})</span>],
                     mode === "buy" ? ["You pay", `${usd(amount, 2)} USDC`] : ["You send", `${fmtShares(own)} ${stock.ticker}`],
                     mode === "buy" ? [`${kid} receives`, `≈ ${fmtShares(giftShares)} ${stock.ticker}`] : ["Eligibility", "✓ Nest can receive this token"],
-                    ["Route", mode === "buy" ? "USDC → swap → nest" : "Direct transfer → nest"],
+                    ["Route", onchain ? "USDC → escrow → parent accepts → nest" : mode === "buy" ? "USDC → swap → nest" : "Direct transfer → nest"],
+                    ...(onchain ? [
+                      ["Opens", unlockDate && unlockDate.getTime() > Date.now() ? fmtDay(unlockDate) : "Right away"],
+                      ["Owner until accepted", "You (held in escrow)"],
+                      ["Expires if not accepted", fmtDate(expiresDate)],
+                    ] : []),
                     ["From", isPrivate ? "Private gift" : name.trim() || "Someone who loves you"],
                     ["Occasion", occasion],
                     ["Network", <Chip key="n" tone="base" xs>{onchain ? networkName : "Simulated"}</Chip>],
@@ -309,7 +362,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                 <div className="mt-4 flex gap-2.5 rounded-2xl bg-sky-soft p-3.5 text-sm text-ink-2">
                   <Info size={18} className="mt-0.5 shrink-0 text-forest" />
                   <span>{onchain
-                    ? <>This is a real transaction on {networkName} (testnet), priced live from Chainlink. If you don&apos;t have test USDC, your wallet gets 1,000 free in the same step. If {stock.name} can&apos;t be delivered to {kid}&apos;s nest, your USDC is refunded automatically.{!process.env.NEXT_PUBLIC_PAYMASTER_URL && <> Your wallet needs a little test ETH for gas (<a className="underline" href="https://portal.cdp.coinbase.com/products/faucet" target="_blank" rel="noopener noreferrer">free faucet</a>).</>}</>
+                    ? <>This is a real transaction on {networkName} (testnet), priced live from Chainlink. Your {usd(amount, 2)} USDC is held in the StockNest escrow and <b>stays yours until {kid}&apos;s parents accept it</b>. When they do, {kid}&apos;s nest is checked against {stock.name}&apos;s transfer rules: if it can receive it, the shares are delivered; if not, you&apos;re refunded. If nobody accepts it by {fmtDate(expiresDate)}, you can take it back.{restrictedPick && <> <b>{stock.name} is restricted on testnet and {kid}&apos;s nest isn&apos;t approved for it, so expect a refund.</b></>} If you don&apos;t have test USDC, your wallet gets 1,000 free in the same step.{!process.env.NEXT_PUBLIC_PAYMASTER_URL && <> Your wallet needs a little test ETH for gas (<a className="underline" href="https://portal.cdp.coinbase.com/products/faucet" target="_blank" rel="noopener noreferrer">free faucet</a>).</>}</>
                     : mode === "buy"
                     ? `Shares are priced live. If the stock can't be delivered to ${kid}'s nest, your USDC is refunded automatically. This nest isn't onchain yet, so this gift is simulated.`
                     : `The token's transfer policy is checked before sending. Shares go to ${kid}'s guardian-managed nest, not a child's personal wallet. Gifting shares you own is simulated in this demo.`}</span>
@@ -330,7 +383,9 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
         onClose={() => { router.push(`/n/${nest.slug}`); router.refresh(); }}
         steps={["Stock", "Note", "Gift"]}
         title={<>Give today.<br />Grow tomorrow.</>}
-        subtitle={returned
+        subtitle={pending
+          ? <>{sent && !sent.isPrivate && name.trim() ? `Thank you, ${name.trim()}! ` : ""}Your <b>{fmtShares(sent!.shares)} {stock.name}</b> is wrapped and waiting for {kid}&apos;s parents to accept it{sent!.unlockAt && new Date(sent!.unlockAt) > new Date() ? <> on or after {fmtDay(sent!.unlockAt)}</> : null}. Until then it&apos;s still yours, held in escrow on Base. If it isn&apos;t accepted by {fmtDate(sent!.expiresAt!)}, you can take it back from {kid}&apos;s page.</>
+          : returned
           ? <>{stock.name} can&apos;t be delivered to {kid}&apos;s nest yet because of its transfer rules, so your test USDC was refunded automatically.</>
           : <>{sent && !sent.isPrivate && name.trim() ? `Thank you, ${name.trim()}! ` : ""}Your <b>{fmtShares(sent?.shares || giftShares)} {stock.name}</b> {sent && isRealTx(sent.txHash) ? "is now in" : "is on its way to"} {kid}&apos;s Stock Nest.</>}
         shareUrl={typeof window !== "undefined" ? `${window.location.origin}/n/${nest.slug}` : ""}
