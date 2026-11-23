@@ -128,7 +128,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
-  .fs-rise, .fs-send { opacity: 0 !important; }
+  .fs-rise, .fs-send, .fs-drop { opacity: 0 !important; }
+  .fs-catch { animation: none; }
 }
 
 /* ---------- celebration ---------- */
@@ -142,6 +143,17 @@ body {
 /* ---------- Amelia's walk (and Biscuit tagging along) ---------- */
 .amelia-walk { animation: amelia-walk 16s ease-in-out infinite; }
 @keyframes amelia-walk { 0%, 8% { transform: translateX(0) } 44%, 56% { transform: translateX(300px) } 92%, 100% { transform: translateX(0) } }
+/* stocks dropping into Amelia's gift box */
+.fs-drop { animation: fs-drop 5.25s cubic-bezier(.5,0,.75,.4) infinite; transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; }
+@keyframes fs-drop {
+  0% { transform: translateY(-170px) rotate(-30deg) scale(.9); opacity: 0 }
+  4% { opacity: 1 }
+  13% { transform: translateY(0) rotate(10deg) scale(1); opacity: 1 }
+  17% { transform: translateY(16px) rotate(0) scale(.8); opacity: 0 }
+  100% { transform: translateY(16px); opacity: 0 }
+}
+.fs-catch { animation: fs-catch .75s ease-out infinite .62s; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes fs-catch { 0%, 100% { transform: scale(1, 1) } 12% { transform: scale(1.04, .95) } 30% { transform: scale(.99, 1.02) } 50% { transform: scale(1, 1) } }
 .walk-bob { animation: walk-bob .45s ease-in-out infinite alternate; }
 @keyframes walk-bob { from { transform: translateY(0) } to { transform: translateY(-3.5px) } }
 .leg-a, .leg-b { animation: leg-swing .45s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 0; }

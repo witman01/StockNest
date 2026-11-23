@@ -159,6 +159,12 @@ function Mum() {
   );
 }
 
+/** Stock logos that fall into Amelia's gift box as she walks. */
+const DROPS = [
+  { logo: "apple", x: -14 }, { logo: "meta", x: 12 }, { logo: "nvidia", x: -2 },
+  { logo: "tesla", x: 18 }, { logo: "amazon", x: -18 }, { logo: "microsoft", x: 6 }, { logo: "google", x: -8 },
+];
+
 function Amelia() {
   const skin = "#A8704C", hair = "#2A1A12";
   return (
@@ -176,13 +182,30 @@ function Amelia() {
       <Eyes l={-8} r={8} y={-141} rad={2.5} />
       <Cheeks l={-15} r={15} y={-134} rad={3.8} />
       <path d="M-6 -132Q0 -127 6 -132" stroke={INK} strokeWidth="2.2" fill="none" strokeLinecap="round" />
-      <rect x="-22" y="-92" width="44" height="36" rx="5" fill={FOREST} />
-      <rect x="-26" y="-99" width="52" height="12" rx="4" fill={FOREST_DK} />
-      <rect x="-4" y="-99" width="8" height="43" fill={HONEY} />
-      <ellipse cx="-8" cy="-104" rx="9" ry="5.5" fill={HONEY} transform="rotate(-25 -8 -104)" />
-      <ellipse cx="8" cy="-104" rx="9" ry="5.5" fill={HONEY} transform="rotate(25 8 -104)" />
-      <circle cx="0" cy="-101" r="3.5" fill="#D99A2B" />
-      <circle cx="-23" cy="-76" r="6.5" fill={skin} /><circle cx="23" cy="-76" r="6.5" fill={skin} />
+      {/* a big open gift box: the lid flipped back, stocks dropping in */}
+      <g transform="rotate(-24 -36 -108)">
+        <rect x="-40" y="-122" width="60" height="12" rx="4" fill={FOREST_DK} />
+        <rect x="-14" y="-122" width="8" height="12" fill={HONEY} />
+        <ellipse cx="-16" cy="-127" rx="8" ry="5" fill={HONEY} transform="rotate(-25 -16 -127)" />
+        <ellipse cx="-4" cy="-127" rx="8" ry="5" fill={HONEY} transform="rotate(25 -4 -127)" />
+      </g>
+      <rect x="-36" y="-108" width="72" height="12" rx="4" fill="#062C22" />
+      {DROPS.map((d, i) => (
+        <g key={d.logo} transform={`translate(${d.x} -104)`}>
+          <g className="fs-drop" style={{ animationDelay: `${i * 0.75}s` }}>
+            <circle r="12" fill="#fff" />
+            <image href={`/logos/${d.logo}.svg`} x="-7.5" y="-7.5" width="15" height="15" />
+          </g>
+        </g>
+      ))}
+      <g className="fs-catch">
+        <path d="M-34 -100H34L30 -48Q30 -44 26 -44H-26Q-30 -44 -30 -48Z" fill={FOREST} />
+        <rect x="-34" y="-102" width="68" height="7" rx="3" fill="#0F6A52" />
+        <rect x="-5" y="-102" width="10" height="58" fill={HONEY} />
+        <path d="M-31 -74H31" stroke={HONEY} strokeWidth="6" opacity=".55" />
+        <Share x={14} y={-70} s={13} />
+      </g>
+      <circle cx="-33" cy="-72" r="7" fill={skin} /><circle cx="33" cy="-72" r="7" fill={skin} />
       </g>
     </g>
   );
