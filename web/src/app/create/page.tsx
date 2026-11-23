@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Copy, Eye, ShieldCheck } from "lucide-react";
+import { Check, Copy, Eye, Gift, ShieldCheck, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AVATAR_KINDS, ChildAvatar } from "@/components/ChildAvatar";
 import { Celebration } from "@/components/Celebration";
@@ -10,8 +10,10 @@ import { StockLogo } from "@/components/StockLogo";
 import { Button, Card, Toggle, useToast } from "@/components/ui";
 import type { AvatarKind } from "@/lib/nests";
 import { createNest, saveOwned, uploadPhoto } from "@/lib/api";
+import { networkName, onchainEnabled } from "@/lib/chain";
+import { connectWallet, createOnchainNest, hasBrowserWallet, walletError } from "@/lib/wallet";
 
-type Created = { slug: string; nestName: string; childName: string; avatar: AvatarKind; photo?: string; showPhoto: boolean };
+type Created = { slug: string; token: string; nestName: string; childName: string; avatar: AvatarKind; photo?: string; showPhoto: boolean };
 import { STOCKS, stockBy } from "@/lib/stocks";
 
 const Label = ({ children, htmlFor, hint }: { children: React.ReactNode; htmlFor?: string; hint?: string }) => (
@@ -22,20 +24,42 @@ const inputCls = "w-full rounded-[10px] border-2 border-line bg-paper px-3.5 py-
 export default function CreatePage() {
   const { toast, toastNode } = useToast();
 
-  const [childName, setChildName] = useState("Amelia");
-  const [nestName, setNestName] = useState("Amelia's Stock Nest");
+  const [childName, setChildName] = useState("");
+  const [nestName, setNestName] = useState("");
   const [nameTouched, setNameTouched] = useState(false);
-  const [avatar, setAvatar] = useState<AvatarKind>("amelia");
+  const [childTouched, setChildTouched] = useState(false);
+  const [avatar, setAvatar] = useState<AvatarKind>("sprout");
   const [photo, setPhoto] = useState<string | undefined>();
   const [showPhoto, setShowPhoto] = useState(true);
   const [picks, setPicks] = useState<string[]>(["AAPL", "NVDA", "MSFT"]);
-  const [goal, setGoal] = useState("5000");
-  const [note, setNote] = useState("Help us give Amelia a head start. Gift her a piece of the companies shaping her future.");
+  const [goal, setGoal] = useState("");
+  const [note, setNote] = useState("");
   const [parentNames, setParentNames] = useState("");
   const [showAmounts, setShowAmounts] = useState(true);
   const [created, setCreated] = useState<Created | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [vault, setVault] = useState<"none" | "busy" | "done">("none");
+  const [vaultError, setVaultError] = useState<string | null>(null);
+
+  async function setUpVault() {
+    if (!created) return;
+    setVault("busy");
+    setVaultError(null);
+    try {
+      const wallet = await connectWallet(hasBrowserWallet() ? "injected" : "smart");
+      const txHash = await createOnchainNest(wallet, created.slug);
+      const res = await fetch(`/api/nests/${encodeURIComponent(created.slug)}/chain`, {
+        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${created.token}` }, body: JSON.stringify({ txHash }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't link the vault.");
+      setVault("done");
+    } catch (e) {
+      setVault("none");
+      setVaultError(e instanceof Error && !("code" in e) && !("shortMessage" in e) ? e.message : walletError(e));
+    }
+  }
 
   const goalNum = parseFloat(goal);
   const errors = useMemo(() => ({
@@ -60,7 +84,8 @@ export default function CreatePage() {
         note: note.trim(), parentNames: parentNames.trim(), goal: goalNum > 0 ? Math.round(goalNum) : undefined, picks, showAmounts,
       });
       saveOwned(slug, manageToken);
-      setCreated({ slug, nestName: finalName, childName: childName.trim(), avatar, photo, showPhoto: !!photo && showPhoto });
+      setVault("none");
+      setCreated({ slug, token: manageToken, nestName: finalName, childName: childName.trim(), avatar, photo, showPhoto: !!photo && showPhoto });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
     } finally {
@@ -78,9 +103,9 @@ export default function CreatePage() {
         <p className="mt-2 text-ink-2">We only ask for what the gift page needs. No surnames, birthdays or schools.</p>
 
         <Label htmlFor="childName">Child&apos;s display name</Label>
-        <input id="childName" className={inputCls} value={childName} maxLength={24}
+        <input id="childName" className={inputCls} value={childName} maxLength={24} placeholder="e.g. Zara" onBlur={() => setChildTouched(true)}
           onChange={(e) => { setChildName(e.target.value); if (!nameTouched) setNestName(`${e.target.value.trim() || "Your child"}'s Stock Nest`); }} />
-        {errors.childName && <p className="mt-1.5 text-sm text-error">{errors.childName}</p>}
+        {errors.childName && childTouched && <p className="mt-1.5 text-sm text-error">{errors.childName}</p>}
 
         <Label>Profile photo</Label>
         <PhotoUpload value={photo} onChange={(p) => { setPhoto(p); if (p) setShowPhoto(true); }} />
@@ -108,7 +133,7 @@ export default function CreatePage() {
         ) : null}
 
         <Label htmlFor="nestName">Nest name</Label>
-        <input id="nestName" className={inputCls} value={nestName} maxLength={40} onChange={(e) => { setNestName(e.target.value); setNameTouched(true); }} />
+        <input id="nestName" className={inputCls} value={nestName} maxLength={40} placeholder={`${childName.trim() || "Your child"}'s Stock Nest`} onChange={(e) => { setNestName(e.target.value); setNameTouched(true); }} />
 
         <Label hint="choose up to 6">Stocks family can gift</Label>
         <div className="flex flex-wrap gap-2">
@@ -131,7 +156,8 @@ export default function CreatePage() {
         </div>
 
         <Label htmlFor="note">A note to family & friends</Label>
-        <textarea id="note" className={clsx(inputCls, "font-display min-h-24 text-[17px] italic")} value={note} maxLength={180} onChange={(e) => setNote(e.target.value)} />
+        <textarea id="note" className={clsx(inputCls, "font-display min-h-24 text-[17px] italic")} value={note} maxLength={180} onChange={(e) => setNote(e.target.value)}
+          placeholder={`Instead of another toy this year, help us give ${childName.trim() || "our child"} a piece of the companies shaping their future.`} />
 
         <Label htmlFor="parents" hint="how the note is signed">From</Label>
         <input id="parents" className={inputCls} placeholder="e.g. Daniel & Grace" value={parentNames} onChange={(e) => setParentNames(e.target.value)} />
@@ -156,7 +182,7 @@ export default function CreatePage() {
           <div className="h-28 wash" />
           <div className="relative -mt-14 px-6 pb-6 text-center">
             <ChildAvatar kind={avatar} photo={photo} showPhoto={showPhoto} size={104} className="mx-auto mb-3" alt={`${childName} photo`} />
-            <h2 className="font-display text-[28px] font-semibold">{nestName || "Stock Nest"}</h2>
+            <h2 className="font-display text-[28px] font-semibold">{nestName || `${childName.trim() || "Your child"}'s Stock Nest`}</h2>
             {note && <p className="font-display mx-auto mt-2 max-w-[400px] italic text-ink-2">&ldquo;{note}&rdquo;</p>}
             {parentNames && <p className="mt-1.5 text-sm text-ink-3">from {parentNames}</p>}
             <p className="mb-2.5 mt-5 text-xs font-bold uppercase tracking-[.06em] text-ink-3">Gift one of these stocks</p>
@@ -190,6 +216,26 @@ export default function CreatePage() {
               onClick={async () => { try { await navigator.clipboard.writeText(url); toast("Link copied"); } catch { toast(url); } }}>
               <Copy size={14} />Copy
             </button>
+          </div>
+        )}
+        {created && (
+          <div className="mt-3 rounded-2xl border border-line p-3.5 text-left">
+            <b className="block text-[15px]">Start it off yourself <span className="font-normal text-ink-3">(optional)</span></b>
+            <p className="mt-0.5 text-sm text-ink-2">Nests fill faster when family opens the link and sees the first gift is already there.</p>
+            <div className="mt-3 grid gap-2">
+              {onchainEnabled && (
+                vault === "done"
+                  ? <p className="flex items-center gap-1.5 text-sm font-semibold text-forest"><Check size={16} />{created.childName}&apos;s vault is live on {networkName}. Your wallet is the guardian.</p>
+                  : <Button size="sm" variant="secondary" onClick={setUpVault} disabled={vault === "busy"}>
+                      <Wallet size={15} />{vault === "busy" ? "Creating the vault…" : `1. Set up ${created.childName}'s vault on Base`}
+                    </Button>
+              )}
+              <Button size="sm" href={`/n/${created.slug}/gift?from=parent`}>
+                <Gift size={15} />{onchainEnabled ? "2. " : ""}Add the first gift
+              </Button>
+            </div>
+            {onchainEnabled && vault !== "done" && <p className="mt-2 text-xs text-ink-3">The vault lets family gift real (testnet) tokenized stocks. Your wallet becomes the guardian, and only you can withdraw.</p>}
+            {vaultError && <p role="alert" className="mt-2 text-sm font-semibold text-error">{vaultError}</p>}
           </div>
         )}
       </Celebration>

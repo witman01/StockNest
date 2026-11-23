@@ -38,7 +38,7 @@ export default function Home() {
             </p>
             <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:gap-3">
               <Button href="/create" className="max-sm:px-2! max-sm:text-[14px]! max-[380px]:text-[13px]!">Create a Stock Nest</Button>
-              <Button href="/n/amelia" variant="secondary" className="max-sm:px-2! max-sm:text-[14px]! max-[380px]:text-[13px]!">See Amelia&apos;s nest</Button>
+              <Button href="/n/amelia" variant="secondary" className="max-sm:px-2! max-sm:text-[14px]! max-[380px]:text-[13px]!">See an example</Button>
             </div>
             <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium text-ink-2">
               {["Gift real tokenized stocks", "Pay in USDC or send shares you own", "Managed by parents"].map((x) => (

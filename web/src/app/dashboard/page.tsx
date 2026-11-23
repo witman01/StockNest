@@ -6,12 +6,12 @@ import { useEffect, useState } from "react";
 import { ChildAvatar } from "@/components/ChildAvatar";
 import { StockLogo } from "@/components/StockLogo";
 import { AllocationBar, Button, Card, Chip, StatusChip, shareLink, useToast } from "@/components/ui";
-import { fetchExampleNests, fetchMyNests, getOwned } from "@/lib/api";
+import { fetchMyNests, getOwned } from "@/lib/api";
 import { nestTotals, type Nest } from "@/lib/nests";
 import { stockBy } from "@/lib/stocks";
 import { shares, shortDate, usd } from "@/lib/format";
 
-type State = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; nests: Nest[]; example: boolean };
+type State = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; nests: Nest[] };
 
 export default function Dashboard() {
   const [state, setState] = useState<State>({ status: "loading" });
@@ -22,8 +22,7 @@ export default function Dashboard() {
       try {
         const owned = getOwned();
         const mine = Object.keys(owned).length ? (await fetchMyNests(owned)).nests : [];
-        if (mine.length) return setState({ status: "ready", nests: mine, example: false });
-        setState({ status: "ready", nests: (await fetchExampleNests()).nests, example: true });
+        setState({ status: "ready", nests: mine });
       } catch (e) {
         setState({ status: "error", message: e instanceof Error ? e.message : "Couldn't load your nests." });
       }
@@ -33,7 +32,17 @@ export default function Dashboard() {
   if (state.status === "loading") return <div className="py-24"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-forest border-t-transparent" /></div>;
   if (state.status === "error") return <p className="py-24 text-center text-error">{state.message}</p>;
 
-  const { nests, example } = state;
+  const { nests } = state;
+  if (nests.length === 0) {
+    return (
+      <div className="mx-auto max-w-[520px] px-4 py-20 text-center">
+        <span className="text-xs font-bold uppercase tracking-[.06em] text-ink-2">Parent dashboard</span>
+        <h1 className="font-display mt-2 text-3xl font-semibold">No nests yet</h1>
+        <p className="mt-3 text-ink-2">Create a Stock Nest for your child and it will appear here, with every gift and giver. Nests you created on another device open there.</p>
+        <div className="mt-6 flex justify-center"><Button href="/create"><Plus size={18} />Create a Stock Nest</Button></div>
+      </div>
+    );
+  }
   const totals = nests.map((n) => ({ nest: n, t: nestTotals(n) }));
   const all = totals.reduce((a, { t }) => ({ usd: a.usd + t.total, gifts: a.gifts + t.giftCount }), { usd: 0, gifts: 0 });
   const givers = new Set(nests.flatMap((n) => n.gifts.map((g) => g.from)));
@@ -41,19 +50,12 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto max-w-[1160px] px-4 pb-16 pt-4 md:px-8">
-      {example && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-honey-soft px-5 py-4">
-          <div><b>This is an example dashboard.</b> <span className="text-ink-2">Create a nest and it will appear here with your family&apos;s real gifts.</span></div>
-          <Button href="/create" size="sm"><Plus size={16} />Create a nest</Button>
-        </div>
-      )}
-
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <span className="text-xs font-bold uppercase tracking-[.06em] text-ink-2">Parent dashboard</span>
-          <h1 className="font-display mt-1 text-[30px] font-semibold md:text-[40px]">{example ? "Welcome, Daniel 👋" : "Your family's nests 👋"}</h1>
+          <h1 className="font-display mt-1 text-[30px] font-semibold md:text-[40px]">Your family&apos;s nests 👋</h1>
         </div>
-        {!example && <Button href="/create" size="sm"><Plus size={18} />New Stock Nest</Button>}
+        <Button href="/create" size="sm"><Plus size={18} />New Stock Nest</Button>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">

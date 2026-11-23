@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { ArrowLeft, CreditCard, Info, Mail, Wallet } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ChildAvatar } from "@/components/ChildAvatar";
 import { Celebration, DeliveryTracker } from "@/components/Celebration";
@@ -34,6 +34,7 @@ const inputCls = "w-full rounded-[10px] border-2 border-line bg-paper px-3.5 py-
 
 export function GiftFlow({ nest }: { nest: PublicNest }) {
   const router = useRouter();
+  const fromParent = useSearchParams().get("from") === "parent";
 
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<GiftMode>("buy");
@@ -41,7 +42,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
   const [amount, setAmount] = useState(50);
   const [custom, setCustom] = useState("");
   const [ownShares, setOwnShares] = useState("0.5");
-  const [name, setName] = useState("");
+  const [name, setName] = useState(fromParent ? nest.parentNames || "Mum & Dad" : "");
   const [isPrivate, setIsPrivate] = useState(false);
   const [occasion, setOccasion] = useState(OCCASIONS[0]);
   const [message, setMessage] = useState("");

@@ -8,8 +8,8 @@ import { ChildAvatar } from "@/components/ChildAvatar";
 import { OnchainCard } from "@/components/OnchainCard";
 import { StockLogo } from "@/components/StockLogo";
 import { AllocationBar, Button, Card, Chip, SeriesDot, StatusChip, Toggle, shareLink, useToast } from "@/components/ui";
-import { fetchExampleNests, fetchMyNests, getOwned, updateNest } from "@/lib/api";
-import { nestTotals, SEED_NESTS, type Gift, type Nest } from "@/lib/nests";
+import { fetchMyNests, getOwned, updateNest } from "@/lib/api";
+import { nestTotals, type Gift, type Nest } from "@/lib/nests";
 import { stockBy } from "@/lib/stocks";
 import { txUrl } from "@/lib/chain";
 import { EscrowActions } from "@/components/EscrowActions";
@@ -37,11 +37,6 @@ export default function NestDashboard({ params }: { params: Promise<{ slug: stri
       if (token) {
         const { nests } = await fetchMyNests({ [slug]: token });
         if (nests[0]) return setState({ status: "ready", nest: nests[0], token });
-      }
-      if (SEED_NESTS.some((n) => n.slug === slug)) {
-        const { nests } = await fetchExampleNests();
-        const n = nests.find((x) => x.slug === slug);
-        if (n) return setState({ status: "ready", nest: n, token: null });
       }
       setState({ status: "denied" });
     })().catch(() => setState({ status: "denied" }));
