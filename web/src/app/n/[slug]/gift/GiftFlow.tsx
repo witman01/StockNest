@@ -18,7 +18,14 @@ import { shares as fmtShares, usd } from "@/lib/format";
 import { priceFor, usePrices } from "@/lib/usePrices";
 
 const OCCASIONS = ["🎂 Birthday", "🎄 Holiday", "🎓 Graduation", "💛 Just because"];
-const AMOUNTS = [10, 25, 50, 100];
+const AMOUNTS = [20, 50, 100, 250];
+/** "10000.5" -> "10,000.5": commas in the whole part, at most 2 decimals. */
+function withCommas(raw: string) {
+  const clean = raw.replace(/[^\d.]/g, "");
+  const [whole, ...rest] = clean.split(".");
+  const int = whole.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return rest.length ? `${int || "0"}.${rest.join("").slice(0, 2)}` : int;
+}
 const fmtDay = (d: Date | string) => new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 type Pay = "email" | "wallet";
 type Phase = "idle" | "signing" | "executing";
@@ -38,7 +45,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
   const [mode, setMode] = useState<GiftMode>("buy");
   const [ticker, setTicker] = useState<string>(preTicker);
   const [amount, setAmount] = useState(prefilled ? preAmount : 50);
-  const [custom, setCustom] = useState(prefilled && !AMOUNTS.includes(preAmount) ? String(preAmount) : "");
+  const [custom, setCustom] = useState(prefilled && !AMOUNTS.includes(preAmount) ? withCommas(String(preAmount)) : "");
   const [ownShares, setOwnShares] = useState("0.5");
   const [name, setName] = useState(fromParent ? nest.parentNames || "Mum & Dad" : "");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -241,14 +248,17 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                     <div className="my-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                       {AMOUNTS.map((a) => (
                         <button key={a} onClick={() => { setAmount(a); setCustom(""); }}
-                          className={clsx("num h-16 rounded-2xl border-2 text-xl font-bold transition", !custom && amount === a ? "border-forest bg-forest text-white" : "border-line bg-paper")}>${a}</button>
+                          className={clsx("num h-16 rounded-2xl border-2 font-bold transition", !custom && amount === a ? "border-forest bg-forest text-white" : "border-line bg-paper")}>
+                          <span className="block text-xl leading-tight">${a}</span>
+                          <span className={clsx("block text-xs font-semibold", !custom && amount === a ? "text-white/80" : "text-ink-3")}>≈ {fmtShares(a / livePrice)} sh</span>
+                        </button>
                       ))}
                     </div>
                     <label htmlFor="custom" className="mb-2 block text-sm font-semibold">Or enter another amount</label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-ink-2">$</span>
                       <input id="custom" className={clsx(inputCls, "num pl-8")} inputMode="decimal" placeholder="e.g. 75" value={custom}
-                        onChange={(e) => { const v = e.target.value.replace(/[^\d.]/g, ""); setCustom(v); setAmount(parseFloat(v) || 0); }} />
+                        onChange={(e) => { const v = withCommas(e.target.value); setCustom(v); setAmount(parseFloat(v.replace(/,/g, "")) || 0); }} />
                     </div>
                   </>
                 ) : (

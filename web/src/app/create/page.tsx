@@ -313,7 +313,7 @@ export default function CreatePage() {
                 </div>
                 <p className="mb-2 mt-4 text-sm font-semibold">Amount (USDC)</p>
                 <div className="grid grid-cols-4 gap-2">
-                  {[10, 25, 50, 100].map((a) => (
+                  {[20, 50, 100, 250].map((a) => (
                     <button key={a} type="button" onClick={() => setFirstAmount(a)} aria-pressed={firstAmount === a}
                       className={clsx("num h-12 rounded-xl border-2 font-bold transition", firstAmount === a ? "border-forest bg-forest text-white" : "border-line bg-paper")}>${a}</button>
                   ))}

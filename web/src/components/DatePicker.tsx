@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { CalendarHeart, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarHeart, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 /** Dates are yyyy-mm-dd strings (UTC midnight), matching the nest's opensOn. */
@@ -9,6 +9,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const iso = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+const MAX_YEARS = 20; // the contract allows gifts to open up to 20 years ahead
 
 export const prettyDay = (d: string) =>
   new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
@@ -32,12 +33,16 @@ export function DatePicker({ value, onChange, label = "Gifts open on" }: { value
   const min = plusDays(1);
   const start = value || min;
   const [view, setView] = useState(() => ({ y: +start.slice(0, 4), m: +start.slice(5, 7) - 1 }));
+  const [chooser, setChooser] = useState(false);
+  const minY = +min.slice(0, 4), minM = +min.slice(5, 7) - 1;
+  const years = Array.from({ length: MAX_YEARS }, (_, i) => minY + i);
 
   const quick = useMemo(() => [
     { t: "In a month", d: plusDays(30) },
     { t: "Christmas", d: nextOf(11, 25) },
     { t: "New Year", d: nextOf(0, 1) },
     { t: "In a year", d: plusDays(365) },
+    { t: "In 5 years", d: plusDays(5 * 365 + 1) },
   ], []);
 
   const cells = useMemo(() => {
@@ -51,7 +56,8 @@ export function DatePicker({ value, onChange, label = "Gifts open on" }: { value
   }, [view]);
 
   const monthName = new Date(Date.UTC(view.y, view.m, 1)).toLocaleDateString(undefined, { month: "long", year: "numeric", timeZone: "UTC" });
-  const canPrev = view.y * 12 + view.m > +min.slice(0, 4) * 12 + (+min.slice(5, 7) - 1);
+  const canPrev = view.y * 12 + view.m > minY * 12 + minM;
+  const canNext = view.y < minY + MAX_YEARS - 1 || view.m < 11;
   const shift = (n: number) => setView((v) => { const t = v.y * 12 + v.m + n; return { y: Math.floor(t / 12), m: t % 12 }; });
   const pick = (d: string) => { onChange(d); setView({ y: +d.slice(0, 4), m: +d.slice(5, 7) - 1 }); };
   const today = todayIso();
@@ -70,10 +76,37 @@ export function DatePicker({ value, onChange, label = "Gifts open on" }: { value
       <div className="mt-3.5 flex items-center justify-between">
         <button type="button" onClick={() => shift(-1)} disabled={!canPrev} aria-label="Previous month"
           className="grid h-9 w-9 place-items-center rounded-full text-ink-2 transition hover:bg-sand disabled:opacity-30"><ChevronLeft size={18} /></button>
-        <b className="font-display text-[17px]">{monthName}</b>
-        <button type="button" onClick={() => shift(1)} aria-label="Next month"
-          className="grid h-9 w-9 place-items-center rounded-full text-ink-2 transition hover:bg-sand"><ChevronRight size={18} /></button>
+        <button type="button" onClick={() => setChooser((c) => !c)} aria-expanded={chooser}
+          className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 transition hover:bg-sand">
+          <b className="font-display text-[17px]">{monthName}</b>
+          <ChevronDown size={16} className={clsx("text-ink-3 transition", chooser && "rotate-180")} />
+        </button>
+        <button type="button" onClick={() => shift(1)} disabled={!canNext} aria-label="Next month"
+          className="grid h-9 w-9 place-items-center rounded-full text-ink-2 transition hover:bg-sand disabled:opacity-30"><ChevronRight size={18} /></button>
       </div>
+
+      {chooser ? (
+        <div className="mt-2">
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-3">Year</p>
+          <div className="grid max-h-[124px] grid-cols-5 gap-1.5 overflow-y-auto pr-1">
+            {years.map((y) => (
+              <button key={y} type="button" onClick={() => setView((v) => ({ y, m: y === minY && v.m < minM ? minM : v.m }))} aria-pressed={view.y === y}
+                className={clsx("num h-9 rounded-xl text-[14px] font-semibold transition", view.y === y ? "bg-forest text-white" : "bg-sand text-ink hover:bg-forest-soft")}>{y}</button>
+            ))}
+          </div>
+          <p className="mb-1.5 mt-3 text-[11px] font-bold uppercase tracking-wide text-ink-3">Month</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {Array.from({ length: 12 }, (_, m) => {
+              const off = view.y === minY && m < minM;
+              const name = new Date(Date.UTC(2000, m, 1)).toLocaleDateString(undefined, { month: "short", timeZone: "UTC" });
+              return (
+                <button key={m} type="button" disabled={off} onClick={() => { setView((v) => ({ ...v, m })); setChooser(false); }} aria-pressed={view.m === m}
+                  className={clsx("h-9 rounded-xl text-[14px] font-semibold transition disabled:opacity-30", view.m === m ? "bg-forest text-white" : "bg-sand text-ink hover:bg-forest-soft")}>{name}</button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (<>
 
       <div className="mt-2 grid grid-cols-7 text-center text-[11px] font-bold uppercase tracking-wide text-ink-3">
         {WEEKDAYS.map((w) => <span key={w} className="py-1">{w}</span>)}
@@ -93,6 +126,7 @@ export function DatePicker({ value, onChange, label = "Gifts open on" }: { value
           );
         })}
       </div>
+      </>)}
 
       {value && (
         <div className="mt-3 flex items-center gap-2 rounded-xl bg-forest-soft px-3 py-2.5 text-sm">
