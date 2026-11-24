@@ -93,7 +93,7 @@ export function GiftPage({ nest: initial }: { nest: PublicNest }) {
                 {g.message && <p className="font-display my-1.5 break-words text-[17px] italic">&ldquo;{g.message}&rdquo;</p>}
                 <div className="flex flex-wrap items-center gap-3 text-[13px] text-ink-3">
                   <span>{shortDate(g.createdAt)}</span>
-                  {g.status === "pending" ? <Chip tone="honey" xs>Waiting to be accepted</Chip> : g.status === "buying" ? <Chip tone="pending" xs>Buying stock</Chip> : g.status === "usdc_received" ? <Chip xs>USDC received</Chip> : txUrl(g.txHash ?? "") ? <a href={txUrl(g.txHash!)!} target="_blank" rel="noopener noreferrer"><Chip tone="base" xs>Receipt ↗</Chip></a> : <Chip xs>Simulated</Chip>}
+                  {g.status === "pending" ? <Chip tone="honey" xs>Wrapped</Chip> : g.status === "buying" ? <Chip tone="pending" xs>Buying stock</Chip> : g.status === "usdc_received" ? <Chip xs>USDC received</Chip> : txUrl(g.txHash ?? "") ? <a href={txUrl(g.txHash!)!} target="_blank" rel="noopener noreferrer"><Chip tone="base" xs>Receipt ↗</Chip></a> : <Chip xs>Simulated</Chip>}
                 </div>
                 <EscrowActions slug={nest.slug} gift={g} role="public"
                   onUpdated={(u) => setNest({ ...nest, gifts: u.status === "pending" ? nest.gifts.map((x) => (x.id === u.id ? u : x)) : nest.gifts.filter((x) => x.id !== u.id) })} />

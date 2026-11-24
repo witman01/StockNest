@@ -51,7 +51,7 @@ export function Chip({ tone = "sand", xs, className, children }: { tone?: keyof 
 }
 
 const STATUS: Record<GiftStatus, { label: string; tone: keyof typeof chipTones }> = {
-  pending: { label: "Waiting to be accepted", tone: "honey" },
+  pending: { label: "Wrapped", tone: "honey" },
   usdc_received: { label: "USDC received", tone: "sand" },
   buying: { label: "Buying stock", tone: "pending" },
   delivered: { label: "Delivered", tone: "forest" },

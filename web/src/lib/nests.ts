@@ -6,9 +6,10 @@ import { stockBy } from "./stocks";
 
 export type AvatarKind = "amelia" | "tobi" | "sprout" | "bear";
 export type GiftMode = "buy" | "own";
-/** pending = sent onchain and held in escrow until the parent accepts it. */
+/** pending = sent onchain, held in escrow until it opens and is delivered to the child's vault. */
 export type GiftStatus = "pending" | "usdc_received" | "buying" | "delivered" | "returned" | "failed";
-export type RefundReason = "expired" | "ineligible";
+/** The only refund: the child's vault can't legally hold that stock. */
+export type RefundReason = "ineligible";
 
 export type Gift = {
   id: string;
@@ -27,7 +28,6 @@ export type Gift = {
   /** Onchain escrow gift (StockNest.gifts id) and its dates. */
   chainGiftId?: number;
   unlockAt?: string;
-  expiresAt?: string;
   refundReason?: RefundReason;
   /** The claim or refund transaction. */
   settleTxHash?: string;
@@ -51,8 +51,6 @@ export type Nest = {
   createdAt: string;
   /** Gift rules, set by the parent. Gifts stay wrapped until this day (yyyy-mm-dd, 00:00 UTC). */
   opensOn?: string;
-  /** Seconds the parent has to accept a gift before the giver can take it back. */
-  acceptWindow?: number;
   /** Onchain nest (StockNest contract) once the guardian has created it. */
   chainNestId?: number;
   vault?: string;
@@ -63,27 +61,15 @@ export type Nest = {
 /* Gift rules                                                          */
 /* ------------------------------------------------------------------ */
 
-export const ACCEPT_WINDOWS = [
-  { secs: 7 * 86400, label: "7 days" },
-  { secs: 30 * 86400, label: "30 days" },
-  { secs: 90 * 86400, label: "90 days" },
-  { secs: 6 * 60, label: "6 min", note: "demo" },
-] as const;
-export const DEFAULT_ACCEPT_WINDOW = 30 * 86400;
-/** Slack added to the window so it still meets the contract minimum once the tx is mined. */
-export const WINDOW_SLACK = 120;
-
 export const opensAtMs = (opensOn?: string) => (opensOn ? Date.parse(`${opensOn}T00:00:00Z`) : 0);
-export const acceptWindowLabel = (secs?: number) =>
-  ACCEPT_WINDOWS.find((w) => w.secs === (secs ?? DEFAULT_ACCEPT_WINDOW))?.label ?? `${Math.round((secs ?? 0) / 86400)} days`;
 
-/** The unlock and expiry a gift sent now must use, from the nest's rules (unix seconds; unlockAt 0 = open now). */
-export function giftTiming(nest: Pick<Nest, "opensOn" | "acceptWindow">, nowMs = Date.now()) {
-  const nowSecs = Math.floor(nowMs / 1000);
+/**
+ * The unlock time a gift sent now must use, from the nest's rules (unix seconds; 0 = opens now).
+ * There's no expiry: once open, a gift is delivered to the child's vault automatically.
+ */
+export function giftTiming(nest: Pick<Nest, "opensOn">, nowMs = Date.now()) {
   const opens = Math.floor(opensAtMs(nest.opensOn) / 1000);
-  const unlockAt = opens > nowSecs ? opens : 0;
-  const window = nest.acceptWindow ?? DEFAULT_ACCEPT_WINDOW;
-  return { unlockAt, expiresAt: Math.max(nowSecs, unlockAt) + window + WINDOW_SLACK, window };
+  return { unlockAt: opens > Math.floor(nowMs / 1000) ? opens : 0 };
 }
 
 /* ------------------------------------------------------------------ */

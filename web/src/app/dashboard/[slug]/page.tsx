@@ -18,7 +18,7 @@ import { shares, shortDate, usd } from "@/lib/format";
 type Filter = "all" | "pending" | "delivered" | "progress" | "returned";
 const FILTERS: { id: Filter; label: string; match: (g: Gift) => boolean }[] = [
   { id: "all", label: "All", match: () => true },
-  { id: "pending", label: "To accept", match: (g) => g.status === "pending" },
+  { id: "pending", label: "Wrapped", match: (g) => g.status === "pending" },
   { id: "delivered", label: "Delivered", match: (g) => g.status === "delivered" },
   { id: "progress", label: "In progress", match: (g) => g.status === "usdc_received" || g.status === "buying" },
   { id: "returned", label: "Returned", match: (g) => g.status === "returned" || g.status === "failed" },

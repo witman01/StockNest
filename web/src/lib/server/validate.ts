@@ -1,4 +1,3 @@
-import { ACCEPT_WINDOWS, DEFAULT_ACCEPT_WINDOW } from "@/lib/nests";
 import { z } from "zod";
 import { STOCKS } from "@/lib/stocks";
 
@@ -21,7 +20,6 @@ export const CreateNestInput = z.object({
     const t = Date.parse(`${d}T00:00:00Z`);
     return t > Date.now() && t < Date.now() + 20 * 365 * 86400e3;
   }, "Pick a date in the future.").optional(),
-  acceptWindow: z.union(ACCEPT_WINDOWS.map((w) => z.literal(w.secs)) as unknown as [z.ZodLiteral<number>, z.ZodLiteral<number>]).default(DEFAULT_ACCEPT_WINDOW),
 });
 
 export const GiftInput = z.object({

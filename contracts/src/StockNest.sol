@@ -18,13 +18,14 @@ interface ITestB20 {
 ///         send   -> The giver pays USDC (or deposits shares they own). The share
 ///                   amount is fixed at a signed live quote (Chainlink feeds on
 ///                   Base mainnet) and the funds are held in escrow here.
-///                   Until the gift is accepted, it still belongs to the giver.
-///         claim  -> After the optional unlock date, the guardian accepts it. The
-///                   child's vault is checked against the stock's transfer policy
-///                   (B20 eligibility). Eligible: the shares go to the vault.
-///                   Not eligible: the giver is refunded in the same transaction.
-///         refund -> If a gift isn't accepted before it expires, or the vault
-///                   can't legally hold the stock, anyone can return it to the giver.
+///         claim  -> Once the gift opens (now, or the parent's chosen day), anyone
+///                   can deliver it - our server does it automatically. It can only
+///                   ever go to the child's vault. The vault is checked against the
+///                   stock's transfer policy (B20 eligibility). Eligible: the shares
+///                   go to the vault. Not eligible: the giver is refunded in full.
+///         refund -> The only way money leaves escrow to anyone but the child: the
+///                   child's vault can't legally hold that stock.
+///         There is no expiry. A gift never goes back just because nobody acted.
 ///
 ///         Messages stay offchain. Only their hash (memoHash) is recorded.
 contract StockNest is Owned {
@@ -33,8 +34,6 @@ contract StockNest is Owned {
     uint256 public constant MIN_GIFT = 1e6; // 1 USDC
     uint256 public constant MAX_GIFT = 10_000e6; // 10,000 USDC
     uint256 public constant MAX_QUOTE_AGE = 10 minutes;
-    uint256 public constant MIN_CLAIM_WINDOW = 5 minutes; // short on testnet so expiry can be demoed
-    uint256 public constant MAX_CLAIM_WINDOW = 365 days;
     uint256 public constant MAX_UNLOCK_DELAY = 20 * 365 days;
 
     enum Status {
@@ -46,7 +45,6 @@ contract StockNest is Owned {
 
     enum RefundReason {
         None,
-        Expired,
         Ineligible
     }
 
@@ -63,8 +61,7 @@ contract StockNest is Owned {
         uint256 usdcAmount; // escrowed USDC (0 for a share gift)
         uint256 rawShares; // escrowed shares (0 for a USDC gift)
         uint256 uiShares; // shares the child receives, 18 decimals, UI units
-        uint64 unlockAt; // can't be claimed before this
-        uint64 expiresAt; // refundable to the giver after this
+        uint64 unlockAt; // can't be delivered before this (the nest's opening day)
         Status status;
         bytes32 memoHash;
     }
@@ -93,7 +90,6 @@ contract StockNest is Owned {
         uint256 uiShares,
         uint256 price,
         uint64 unlockAt,
-        uint64 expiresAt,
         bytes32 memoHash
     );
     event GiftClaimed(uint256 indexed giftId, uint256 indexed nestId, address indexed token, uint256 uiShares);
@@ -108,9 +104,7 @@ contract StockNest is Owned {
     error BadDates();
     error UnknownGift();
     error NotPending();
-    error NotGuardian();
     error StillLocked();
-    error GiftExpired();
     error NotRefundable();
 
     constructor(address owner_, address usdc_, address quoteSigner_, address treasury_) Owned(owner_) {
@@ -149,10 +143,9 @@ contract StockNest is Owned {
     }
 
     /// @notice Send a stock gift paid in USDC. The USDC is held in escrow until the
-    ///         guardian accepts it; the share amount is fixed now at the signed quote.
+    ///         gift is delivered; the share amount is fixed now at the signed quote.
     /// @param price USD per whole share with 8 decimals (Chainlink format).
-    /// @param unlockAt Earliest claim time (0 = claimable now).
-    /// @param expiresAt After this the gift can be refunded to the giver.
+    /// @param unlockAt Earliest delivery time (0 = deliverable now).
     function sendGift(
         uint256 nestId,
         address token,
@@ -161,7 +154,6 @@ contract StockNest is Owned {
         uint64 quoteExpiry,
         bytes calldata signature,
         uint64 unlockAt,
-        uint64 expiresAt,
         bytes32 memoHash
     ) external returns (uint256 giftId) {
         if (usdcAmount < MIN_GIFT || usdcAmount > MAX_GIFT) revert BadAmount();
@@ -171,7 +163,7 @@ contract StockNest is Owned {
         }
         // USDC has 6 decimals, shares 18, price 8: shares = usdc * 1e12 * 1e8 / price.
         uint256 uiShares = usdcAmount * 1e20 / price;
-        giftId = _open(nestId, token, usdcAmount, 0, uiShares, unlockAt, expiresAt, memoHash);
+        giftId = _open(nestId, token, usdcAmount, 0, uiShares, unlockAt, memoHash);
         usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
         _emitSent(giftId, price);
     }
@@ -182,25 +174,24 @@ contract StockNest is Owned {
         address token,
         uint256 rawAmount,
         uint64 unlockAt,
-        uint64 expiresAt,
         bytes32 memoHash
     ) external returns (uint256 giftId) {
         if (rawAmount == 0) revert BadAmount();
         uint256 uiShares = ITestB20(token).toUIAmount(rawAmount);
-        giftId = _open(nestId, token, 0, rawAmount, uiShares, unlockAt, expiresAt, memoHash);
+        giftId = _open(nestId, token, 0, rawAmount, uiShares, unlockAt, memoHash);
         token.safeTransferFrom(msg.sender, address(this), rawAmount);
         _emitSent(giftId, 0);
     }
 
-    /// @notice The guardian accepts a gift. Eligibility is checked now: if the vault
-    ///         can't hold this stock, the giver is refunded instead of reverting.
+    /// @notice Deliver an opened gift to the child's vault. Anyone can call this
+    ///         (the destination is fixed), so nobody has to remember to accept.
+    ///         Eligibility is checked now: if the vault can't hold this stock, the
+    ///         giver is refunded instead of reverting.
     /// @return delivered true if the shares reached the vault, false if refunded.
     function claimGift(uint256 giftId) external returns (bool delivered) {
         Gift storage g = _pending(giftId);
         Nest memory n = nests[g.nestId];
-        if (msg.sender != n.guardian) revert NotGuardian();
         if (block.timestamp < g.unlockAt) revert StillLocked();
-        if (block.timestamp > g.expiresAt) revert GiftExpired();
 
         if (!ITestB20(g.token).canReceive(n.vault)) {
             _refund(giftId, g, RefundReason.Ineligible);
@@ -217,17 +208,12 @@ contract StockNest is Owned {
         return true;
     }
 
-    /// @notice Return a gift to its giver. Anyone can call this once the gift has
-    ///         expired unclaimed, or while the child's vault isn't eligible to hold the stock.
+    /// @notice Return a gift to its giver. Only possible while the child's vault
+    ///         isn't eligible to hold the stock; otherwise the gift is the child's.
     function refundGift(uint256 giftId) external {
         Gift storage g = _pending(giftId);
-        if (block.timestamp > g.expiresAt) {
-            _refund(giftId, g, RefundReason.Expired);
-        } else if (!ITestB20(g.token).canReceive(nests[g.nestId].vault)) {
-            _refund(giftId, g, RefundReason.Ineligible);
-        } else {
-            revert NotRefundable();
-        }
+        if (ITestB20(g.token).canReceive(nests[g.nestId].vault)) revert NotRefundable();
+        _refund(giftId, g, RefundReason.Ineligible);
     }
 
     /// @notice Whether the child's vault can currently receive `token` (B20 transfer policy).
@@ -242,23 +228,20 @@ contract StockNest is Owned {
         uint256 rawShares,
         uint256 uiShares,
         uint64 unlockAt,
-        uint64 expiresAt,
         bytes32 memoHash
     ) internal returns (uint256 giftId) {
         if (nests[nestId].vault == address(0)) revert UnknownNest();
         if (!isListed[token]) revert NotListed();
         if (unlockAt > block.timestamp + MAX_UNLOCK_DELAY) revert BadDates();
         uint64 start = unlockAt > block.timestamp ? unlockAt : uint64(block.timestamp);
-        if (expiresAt < start + MIN_CLAIM_WINDOW || expiresAt > start + MAX_CLAIM_WINDOW) revert BadDates();
         giftId = ++giftCount;
-        gifts[giftId] =
-            Gift(nestId, msg.sender, token, usdcAmount, rawShares, uiShares, start, expiresAt, Status.Pending, memoHash);
+        gifts[giftId] = Gift(nestId, msg.sender, token, usdcAmount, rawShares, uiShares, start, Status.Pending, memoHash);
     }
 
     function _emitSent(uint256 giftId, uint256 price) internal {
         Gift storage g = gifts[giftId];
         emit GiftSent(
-            giftId, g.nestId, g.giver, g.token, g.usdcAmount, g.uiShares, price, g.unlockAt, g.expiresAt, g.memoHash
+            giftId, g.nestId, g.giver, g.token, g.usdcAmount, g.uiShares, price, g.unlockAt, g.memoHash
         );
     }
 

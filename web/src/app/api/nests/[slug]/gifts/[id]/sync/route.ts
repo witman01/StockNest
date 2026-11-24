@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import type { Hex } from "viem";
 import { getRepo } from "@/lib/server/repo";
 import { rateLimited } from "@/lib/server/ratelimit";
-import { readGiftSettlement } from "@/lib/server/onchain";
+import { deliverGift, readGiftSettlement } from "@/lib/server/onchain";
 
 /**
- * Bring an escrow gift up to date with the chain after it was claimed or refunded.
+ * Bring an escrow gift up to date with the chain. If it has opened and is still
+ * waiting, the server delivers it to the child's vault first (anyone may; the
+ * contract only ever sends it there).
  * No auth needed: the outcome is read from the StockNest contract, never trusted from the client.
- * Body (optional): { txHash } of the claim/refund transaction, to link its receipt.
+ * Body (optional): { txHash } of a delivery/refund transaction, to link its receipt.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string; id: string }> }) {
   if (rateLimited(req, "gift-sync", 40)) return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
@@ -23,7 +25,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const txHash = typeof body.txHash === "string" && /^0x[0-9a-fA-F]{64}$/.test(body.txHash) ? (body.txHash as Hex) : undefined;
 
   let s;
-  try { s = await readGiftSettlement(gift.chainGiftId, txHash); }
+  const open = !gift.unlockAt || Date.parse(gift.unlockAt) <= Date.now();
+  try { s = txHash ? await readGiftSettlement(gift.chainGiftId, txHash) : open ? await deliverGift(gift.chainGiftId) : await readGiftSettlement(gift.chainGiftId); }
   catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : "Couldn't read the gift onchain." }, { status: 400 }); }
   if (s.status === "pending") return NextResponse.json({ gift });
 

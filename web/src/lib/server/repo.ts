@@ -108,12 +108,12 @@ type NestRow = {
   show_photo: boolean; note: string; parent_names: string; milestone: string | null; goal: number | null;
   picks: string[]; show_amounts: boolean; manage_token_hash: string | null; created_at: string;
   chain_nest_id: number | null; vault: string | null; guardian: string | null;
-  opens_on: string | null; accept_window: number | null;
+  opens_on: string | null;
 };
 type GiftRow = {
   id: string; nest_slug: string; giver: string; is_private: boolean; ticker: string; shares: number; usd: number;
   occasion: string; message: string; mode: Gift["mode"]; status: Gift["status"]; tx_hash: string | null; created_at: string;
-  chain_gift_id: number | null; unlock_at: string | null; expires_at: string | null; refund_reason: string | null; settle_tx_hash: string | null;
+  chain_gift_id: number | null; unlock_at: string | null; refund_reason: string | null; settle_tx_hash: string | null;
 };
 
 const toNestRow = (n: NestRecord): NestRow => ({
@@ -121,12 +121,12 @@ const toNestRow = (n: NestRecord): NestRow => ({
   show_photo: n.showPhoto, note: n.note, parent_names: n.parentNames, milestone: n.milestone ?? null, goal: n.goal ?? null,
   picks: n.picks, show_amounts: n.showAmounts, manage_token_hash: n.manageTokenHash ?? null, created_at: n.createdAt,
   chain_nest_id: n.chainNestId ?? null, vault: n.vault ?? null, guardian: n.guardian ?? null,
-  opens_on: n.opensOn ?? null, accept_window: n.acceptWindow ?? null,
+  opens_on: n.opensOn ?? null,
 });
 const toGiftRow = (slug: string, g: Gift): GiftRow => ({
   id: g.id, nest_slug: slug, giver: g.from, is_private: g.isPrivate, ticker: g.ticker, shares: g.shares, usd: g.usd,
   occasion: g.occasion, message: g.message, mode: g.mode, status: g.status, tx_hash: g.txHash ?? null, created_at: g.createdAt,
-  chain_gift_id: g.chainGiftId ?? null, unlock_at: g.unlockAt ?? null, expires_at: g.expiresAt ?? null,
+  chain_gift_id: g.chainGiftId ?? null, unlock_at: g.unlockAt ?? null,
   refund_reason: g.refundReason ?? null, settle_tx_hash: g.settleTxHash ?? null,
 });
 const fromRows = (r: NestRow, gifts: GiftRow[]): NestRecord => ({
@@ -135,11 +135,11 @@ const fromRows = (r: NestRow, gifts: GiftRow[]): NestRecord => ({
   goal: r.goal ?? undefined, picks: r.picks, showAmounts: r.show_amounts, manageTokenHash: r.manage_token_hash ?? undefined,
   createdAt: r.created_at,
   chainNestId: r.chain_nest_id ?? undefined, vault: r.vault ?? undefined, guardian: r.guardian ?? undefined,
-  opensOn: r.opens_on ?? undefined, acceptWindow: r.accept_window ?? undefined,
+  opensOn: r.opens_on ?? undefined,
   gifts: gifts.map((g) => ({
     id: g.id, from: g.giver, isPrivate: g.is_private, ticker: g.ticker, shares: Number(g.shares), usd: Number(g.usd),
     occasion: g.occasion, message: g.message, mode: g.mode, status: g.status, txHash: g.tx_hash ?? undefined, createdAt: g.created_at,
-    chainGiftId: g.chain_gift_id ?? undefined, unlockAt: g.unlock_at ?? undefined, expiresAt: g.expires_at ?? undefined,
+    chainGiftId: g.chain_gift_id ?? undefined, unlockAt: g.unlock_at ?? undefined,
     refundReason: (g.refund_reason as Gift["refundReason"]) ?? undefined, settleTxHash: g.settle_tx_hash ?? undefined,
   })),
 });

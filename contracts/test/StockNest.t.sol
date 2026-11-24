@@ -76,17 +76,17 @@ contract StockNestTest is Test {
     uint64 constant WEEK = 7 days;
 
     /// Send a USDC gift from grandma. Returns the gift id.
-    function _send(TestB20 token, uint256 usdcAmount, uint64 unlockAt, uint64 expiresAt) internal returns (uint256) {
+    function _send(TestB20 token, uint256 usdcAmount, uint64 unlockAt) internal returns (uint256) {
         uint64 q = uint64(block.timestamp + 120);
         bytes memory sig = _sign(address(token), AAPL_PRICE, q);
         vm.prank(grandma);
         return nest.sendGift(
-            ameliaId, address(token), usdcAmount, AAPL_PRICE, q, sig, unlockAt, expiresAt, keccak256("Happy birthday")
+            ameliaId, address(token), usdcAmount, AAPL_PRICE, q, sig, unlockAt, keccak256("Happy birthday")
         );
     }
 
     function _sendNow(TestB20 token, uint256 usdcAmount) internal returns (uint256) {
-        return _send(token, usdcAmount, 0, uint64(block.timestamp + WEEK));
+        return _send(token, usdcAmount, 0);
     }
 
     /// Send and accept straight away. Returns the shares delivered.
@@ -94,12 +94,12 @@ contract StockNestTest is Test {
         uint256 id = _sendNow(token, usdcAmount);
         vm.prank(parent);
         nest.claimGift(id);
-        (,,,,, uint256 ui,,,,) = nest.gifts(id);
+        (,,,,, uint256 ui,,,) = nest.gifts(id);
         return ui;
     }
 
     function _status(uint256 id) internal view returns (StockNest.Status s) {
-        (,,,,,,,, s,) = nest.gifts(id);
+        (,,,,,,, s,) = nest.gifts(id);
     }
 
     function test_createNest_rejectsDuplicateSlug() public {
@@ -115,7 +115,7 @@ contract StockNestTest is Test {
         assertEq(usdc.balanceOf(address(nest)), 100e6, "held by the contract");
         assertEq(usdc.balanceOf(grandma), 900e6);
         assertEq(apple.balanceOf(vault), 0, "nothing delivered before acceptance");
-        (, address giver,,,, uint256 ui,,,,) = nest.gifts(id);
+        (, address giver,,,, uint256 ui,,,) = nest.gifts(id);
         assertEq(giver, grandma);
         // $100 / $345.30 = 0.289603... shares, fixed at send time
         assertApproxEqAbs(ui, 0.2896032435563278e18, 1e6);
@@ -124,11 +124,10 @@ contract StockNestTest is Test {
     function test_send_emitsGiftSent() public {
         uint64 q = uint64(block.timestamp + 120);
         bytes memory sig = _sign(address(apple), AAPL_PRICE, q);
-        uint64 exp = uint64(block.timestamp + WEEK);
         vm.expectEmit(true, true, true, false);
-        emit StockNest.GiftSent(1, ameliaId, grandma, address(apple), 50e6, 0, AAPL_PRICE, 0, exp, bytes32(0));
+        emit StockNest.GiftSent(1, ameliaId, grandma, address(apple), 50e6, 0, AAPL_PRICE, 0, bytes32(0));
         vm.prank(grandma);
-        nest.sendGift(ameliaId, address(apple), 50e6, AAPL_PRICE, q, sig, 0, exp, bytes32(0));
+        nest.sendGift(ameliaId, address(apple), 50e6, AAPL_PRICE, q, sig, 0, bytes32(0));
     }
 
     // ---------------------------------------------------------------- claim
@@ -143,16 +142,17 @@ contract StockNestTest is Test {
         assertEq(usdc.balanceOf(address(nest)), 0);
     }
 
-    function test_claim_onlyGuardian() public {
+    function test_claim_anyoneCanDeliverButOnlyToTheVault() public {
         uint256 id = _sendNow(apple, 10e6);
-        vm.prank(grandma);
-        vm.expectRevert(StockNest.NotGuardian.selector);
-        nest.claimGift(id);
+        vm.prank(makeAddr("keeper"));
+        assertTrue(nest.claimGift(id));
+        assertGt(apple.balanceOf(vault), 0, "always lands in the child's vault");
+        assertEq(apple.balanceOf(makeAddr("keeper")), 0);
     }
 
     function test_claim_respectsUnlockDate() public {
         uint64 unlock = uint64(block.timestamp + 30 days);
-        uint256 id = _send(apple, 10e6, unlock, unlock + WEEK);
+        uint256 id = _send(apple, 10e6, unlock);
         vm.prank(parent);
         vm.expectRevert(StockNest.StillLocked.selector);
         nest.claimGift(id);
@@ -191,47 +191,34 @@ contract StockNestTest is Test {
         vm.stopPrank();
     }
 
-    // ---------------------------------------------------------------- expiry & refunds
+    // ---------------------------------------------------------------- no expiry, refunds only when ineligible
 
-    function test_refund_afterExpiry() public {
-        uint256 id = _send(apple, 100e6, 0, uint64(block.timestamp + 5 minutes));
+    function test_unopenedGiftNeverGoesBack() public {
+        uint256 id = _sendNow(apple, 100e6);
+        vm.warp(block.timestamp + 5 * 365 days); // nobody did anything for years
         vm.expectRevert(StockNest.NotRefundable.selector);
+        vm.prank(grandma);
         nest.refundGift(id);
-
-        vm.warp(block.timestamp + 5 minutes + 1);
-        vm.prank(parent);
-        vm.expectRevert(StockNest.GiftExpired.selector);
-        nest.claimGift(id);
-
-        vm.expectEmit(true, true, true, true);
-        emit StockNest.GiftRefunded(id, ameliaId, grandma, StockNest.RefundReason.Expired);
-        vm.prank(makeAddr("anyone"));
-        nest.refundGift(id);
-        assertEq(usdc.balanceOf(grandma), 1_000e6);
-        assertEq(uint8(_status(id)), uint8(StockNest.Status.Refunded));
-
-        vm.expectRevert(StockNest.NotPending.selector);
-        nest.refundGift(id);
+        assertTrue(nest.claimGift(id), "still delivered to the child");
+        assertGt(apple.balanceOf(vault), 0);
     }
 
-    function test_refund_ineligibleBeforeExpiry() public {
+    function test_refund_onlyWhenIneligible() public {
         uint256 id = _sendNow(restricted, 40e6);
+        vm.expectEmit(true, true, true, true);
+        emit StockNest.GiftRefunded(id, ameliaId, grandma, StockNest.RefundReason.Ineligible);
         nest.refundGift(id);
         assertEq(usdc.balanceOf(grandma), 1_000e6);
+        vm.expectRevert(StockNest.NotPending.selector);
+        nest.refundGift(id);
     }
 
     function test_send_validatesDates() public {
         uint64 q = uint64(block.timestamp + 120);
         bytes memory sig = _sign(address(apple), AAPL_PRICE, q);
-        vm.startPrank(grandma);
-        vm.expectRevert(StockNest.BadDates.selector); // window too short
-        nest.sendGift(ameliaId, address(apple), 10e6, AAPL_PRICE, q, sig, 0, uint64(block.timestamp + 60), 0);
-        vm.expectRevert(StockNest.BadDates.selector); // window too long
-        nest.sendGift(ameliaId, address(apple), 10e6, AAPL_PRICE, q, sig, 0, uint64(block.timestamp + 400 days), 0);
-        uint64 unlock = uint64(block.timestamp + 10 days);
-        vm.expectRevert(StockNest.BadDates.selector); // expires before it unlocks
-        nest.sendGift(ameliaId, address(apple), 10e6, AAPL_PRICE, q, sig, unlock, unlock - 1, 0);
-        vm.stopPrank();
+        vm.prank(grandma);
+        vm.expectRevert(StockNest.BadDates.selector); // more than 20 years out
+        nest.sendGift(ameliaId, address(apple), 10e6, AAPL_PRICE, q, sig, uint64(block.timestamp + 21 * 365 days), 0);
     }
 
     function test_isEligible() public view {
@@ -248,7 +235,7 @@ contract StockNestTest is Test {
             vm.sign(0xBAD, keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h)));
         vm.prank(grandma);
         vm.expectRevert(StockNest.BadQuote.selector);
-        nest.sendGift(ameliaId, address(apple), 10e6, AAPL_PRICE, q, abi.encodePacked(r, s, v), 0, q + WEEK, 0);
+        nest.sendGift(ameliaId, address(apple), 10e6, AAPL_PRICE, q, abi.encodePacked(r, s, v), 0, 0);
     }
 
     function test_send_rejectsTamperedPrice() public {
@@ -256,7 +243,7 @@ contract StockNestTest is Test {
         bytes memory sig = _sign(address(apple), AAPL_PRICE, q);
         vm.prank(grandma);
         vm.expectRevert(StockNest.BadQuote.selector);
-        nest.sendGift(ameliaId, address(apple), 10e6, AAPL_PRICE / 2, q, sig, 0, q + WEEK, 0);
+        nest.sendGift(ameliaId, address(apple), 10e6, AAPL_PRICE / 2, q, sig, 0, 0);
     }
 
     function test_send_rejectsExpiredQuote() public {
@@ -265,7 +252,7 @@ contract StockNestTest is Test {
         vm.warp(block.timestamp + 121);
         vm.prank(grandma);
         vm.expectRevert(StockNest.QuoteExpired.selector);
-        nest.sendGift(ameliaId, address(apple), 10e6, AAPL_PRICE, q, sig, 0, q + WEEK, 0);
+        nest.sendGift(ameliaId, address(apple), 10e6, AAPL_PRICE, q, sig, 0, 0);
     }
 
     function test_send_enforcesAmountBounds() public {
@@ -273,9 +260,9 @@ contract StockNestTest is Test {
         bytes memory sig = _sign(address(apple), AAPL_PRICE, q);
         vm.startPrank(grandma);
         vm.expectRevert(StockNest.BadAmount.selector);
-        nest.sendGift(ameliaId, address(apple), 0.5e6, AAPL_PRICE, q, sig, 0, q + WEEK, 0);
+        nest.sendGift(ameliaId, address(apple), 0.5e6, AAPL_PRICE, q, sig, 0, 0);
         vm.expectRevert(StockNest.BadAmount.selector);
-        nest.sendGift(ameliaId, address(apple), 10_001e6, AAPL_PRICE, q, sig, 0, q + WEEK, 0);
+        nest.sendGift(ameliaId, address(apple), 10_001e6, AAPL_PRICE, q, sig, 0, 0);
         vm.stopPrank();
     }
 
@@ -284,10 +271,10 @@ contract StockNestTest is Test {
         bytes memory sig = _sign(address(apple), AAPL_PRICE, q);
         vm.startPrank(grandma);
         vm.expectRevert(StockNest.UnknownNest.selector);
-        nest.sendGift(999, address(apple), 10e6, AAPL_PRICE, q, sig, 0, q + WEEK, 0);
+        nest.sendGift(999, address(apple), 10e6, AAPL_PRICE, q, sig, 0, 0);
         bytes memory sig2 = _sign(address(usdc), AAPL_PRICE, q);
         vm.expectRevert(StockNest.NotListed.selector);
-        nest.sendGift(ameliaId, address(usdc), 10e6, AAPL_PRICE, q, sig2, 0, q + WEEK, 0);
+        nest.sendGift(ameliaId, address(usdc), 10e6, AAPL_PRICE, q, sig2, 0, 0);
         vm.stopPrank();
     }
 
@@ -345,7 +332,7 @@ contract StockNestTest is Test {
         apple.mint(uncle, 1e18);
         vm.startPrank(uncle);
         apple.approve(address(nest), 0.5e18);
-        uint256 id = nest.sendShares(ameliaId, address(apple), 0.5e18, 0, uint64(block.timestamp + WEEK), 0);
+        uint256 id = nest.sendShares(ameliaId, address(apple), 0.5e18, 0, 0);
         vm.stopPrank();
         assertEq(apple.balanceOf(address(nest)), 0.5e18);
         vm.prank(parent);
@@ -354,17 +341,20 @@ contract StockNestTest is Test {
         assertEq(apple.balanceOf(uncle), 0.5e18);
     }
 
-    function test_sendShares_refundsSharesAfterExpiry() public {
+    function test_sendShares_refundsSharesWhenIneligible() public {
         address uncle = makeAddr("uncle");
-        vm.prank(address(nest));
-        apple.mint(uncle, 1e18);
-        vm.startPrank(uncle);
-        apple.approve(address(nest), 1e18);
-        uint256 id = nest.sendShares(ameliaId, address(apple), 1e18, 0, uint64(block.timestamp + 5 minutes), 0);
+        vm.startPrank(owner);
+        registry.setMember(allowPolicy, uncle, true);
+        registry.setMember(allowPolicy, address(nest), true);
         vm.stopPrank();
-        vm.warp(block.timestamp + 6 minutes);
-        nest.refundGift(id);
-        assertEq(apple.balanceOf(uncle), 1e18);
+        vm.prank(address(nest));
+        restricted.mint(uncle, 1e18);
+        vm.startPrank(uncle);
+        restricted.approve(address(nest), 1e18);
+        uint256 id = nest.sendShares(ameliaId, address(restricted), 1e18, 0, 0);
+        vm.stopPrank();
+        assertFalse(nest.claimGift(id));
+        assertEq(restricted.balanceOf(uncle), 1e18);
     }
 
     // ---------------------------------------------------------------- faucet & fuzz
@@ -385,24 +375,21 @@ contract StockNestTest is Test {
         uint64 q = uint64(block.timestamp + 120);
         bytes memory sig = _sign(address(apple), price, q);
         vm.prank(grandma);
-        uint256 id = nest.sendGift(ameliaId, address(apple), usdcAmount, price, q, sig, 0, q + WEEK, 0);
-        (,,,,, uint256 shares,,,,) = nest.gifts(id);
+        uint256 id = nest.sendGift(ameliaId, address(apple), usdcAmount, price, q, sig, 0, 0);
+        (,,,,, uint256 shares,,,) = nest.gifts(id);
         // value (shares * price) equals USDC paid, within rounding
         assertApproxEqAbs(shares * price / 1e20, usdcAmount, 1);
     }
 
-    function testFuzz_escrowAlwaysSettlesOnce(uint256 usdcAmount, uint32 wait) public {
+    function testFuzz_giftAlwaysReachesTheChild(uint256 usdcAmount, uint32 wait, address caller) public {
         usdcAmount = bound(usdcAmount, 1e6, 1_000e6);
-        uint256 id = _send(apple, usdcAmount, 0, uint64(block.timestamp + 1 days));
-        vm.warp(block.timestamp + wait);
-        if (wait <= 1 days) {
-            vm.prank(parent);
-            nest.claimGift(id);
-            assertEq(usdc.balanceOf(treasury), usdcAmount);
-        } else {
-            nest.refundGift(id);
-            assertEq(usdc.balanceOf(grandma), 1_000e6);
-        }
+        uint64 unlock = uint64(block.timestamp + 1 days);
+        uint256 id = _send(apple, usdcAmount, unlock);
+        vm.warp(block.timestamp + 1 days + wait);
+        vm.prank(caller);
+        nest.claimGift(id);
+        assertEq(usdc.balanceOf(treasury), usdcAmount);
         assertEq(usdc.balanceOf(address(nest)), 0, "escrow empty after settlement");
+        assertGt(apple.balanceOf(vault), 0);
     }
 }

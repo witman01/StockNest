@@ -1,17 +1,18 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
-import { giftTiming, opensAtMs, WINDOW_SLACK, type Gift } from "@/lib/nests";
+import { giftTiming, opensAtMs, type Gift } from "@/lib/nests";
 import { getRepo } from "@/lib/server/repo";
 import { rateLimited } from "@/lib/server/ratelimit";
 import { firstError, GiftInput } from "@/lib/server/validate";
 import { priceOf } from "@/lib/server/prices";
-import { memoHashOf, verifyGiftTx } from "@/lib/server/onchain";
+import { deliverGift, memoHashOf, verifyGiftTx } from "@/lib/server/onchain";
 import type { Hex } from "viem";
 
 /**
  * Record a stock gift.
- * Onchain nests: the gift was sent to the StockNest escrow, so it's recorded as
- * "pending" until the parent accepts it (or it's refunded). See ./[id]/sync.
+ * Onchain nests: the gift was sent to the StockNest escrow. If it's already open,
+ * the server delivers it to the child's vault right away; if the nest opens on a
+ * set day, it's "pending" until then and delivered then (see ./[id]/sync).
  * Other nests: execution is simulated and the gift is delivered straight away.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
@@ -36,15 +37,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : "Couldn't verify the transaction." }, { status: 400 }); }
     if (v.nestId !== nest.chainNestId) return NextResponse.json({ error: "That gift went to a different nest." }, { status: 400 });
     if (v.memoHash !== memoHashOf(g.message)) return NextResponse.json({ error: "The message doesn't match the onchain gift." }, { status: 400 });
-    // The parent sets the gift rules; a gift sent with other dates isn't accepted here.
+    // The parent sets the opening day; a gift sent with another date isn't accepted here.
     const rule = giftTiming(nest);
     const nowSecs = Math.floor(Date.now() / 1000);
     const opens = Math.floor(opensAtMs(nest.opensOn) / 1000);
     const unlockSecs = Math.floor(Date.parse(v.unlockAt) / 1000);
-    const left = Math.floor(Date.parse(v.expiresAt) / 1000) - Math.max(unlockSecs, nowSecs);
     const unlockOk = unlockSecs === rule.unlockAt || (opens > 0 && unlockSecs === opens) || (rule.unlockAt === 0 && unlockSecs <= nowSecs);
-    const windowOk = left <= rule.window + WINDOW_SLACK + 60 && left >= rule.window + WINDOW_SLACK - 900;
-    if (!unlockOk || !windowOk) return NextResponse.json({ error: "This gift doesn't follow the nest's gift rules." }, { status: 400 });
+    if (!unlockOk) return NextResponse.json({ error: "This gift doesn't follow the nest's gift rules." }, { status: 400 });
     const gift: Gift = {
       id: randomBytes(6).toString("hex"),
       from: g.from || "Someone who loves you",
@@ -59,10 +58,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       txHash: v.txHash,
       chainGiftId: v.giftId,
       unlockAt: v.unlockAt,
-      expiresAt: v.expiresAt,
       createdAt: new Date().toISOString(),
     };
     await repo.addGift(slug, gift);
+    // Already open: deliver it into the child's vault now, so nobody has to accept it.
+    if (unlockSecs <= nowSecs) {
+      const s = await deliverGift(v.giftId).catch(() => null);
+      if (s && s.status !== "pending") {
+        const patch = { status: s.status, refundReason: s.refundReason, settleTxHash: s.settleTxHash };
+        await repo.updateGift(slug, gift.id, patch);
+        Object.assign(gift, patch);
+      }
+    }
     return NextResponse.json({ gift }, { status: 201 });
   }
 

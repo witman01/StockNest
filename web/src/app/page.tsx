@@ -111,7 +111,7 @@ export default function Home() {
             {[
               { n: 1, icon: Sprout, title: "Create a Stock Nest", body: "Add your child's name and photo, then choose the stocks family can gift, like Apple, NVIDIA or Tesla." },
               { n: 2, icon: HeartHandshake, title: "Share one link", body: "Send it on WhatsApp, Telegram or by text. Everyone uses one page, with no wallet addresses or brokerage accounts." },
-              { n: 3, icon: MessageCircleHeart, title: "Family gifts stocks", body: "They pick a stock, an amount and a message, and can lock it until a birthday. Parents accept the gift into the nest, and if it can't be delivered, the giver gets their money back." },
+              { n: 3, icon: MessageCircleHeart, title: "Family gifts stocks", body: "They pick a stock, an amount and a message. It lands in the child's nest, or stays wrapped until the day the parents chose, then opens in automatically." },
             ].map(({ n, icon: Icon, title, body }) => (
               <Card key={n} className="relative overflow-hidden">
                 <span className="font-display absolute -right-2 -top-6 text-[120px] font-bold text-forest-soft">{n}</span>
@@ -191,7 +191,7 @@ export default function Home() {
             </div>
             <p className="mt-6 flex gap-2 border-t border-white/15 pt-5 text-sm text-[#bcd6cb]">
               <ShieldCheck size={18} className="mt-0.5 shrink-0" />
-              Honest by design: stocks can go down as well as up. Values are shown at the time of each gift and aren&apos;t a promise of growth. B20 transfer policies are checked before delivery, and a gift that can&apos;t be delivered is refunded.
+              Honest by design: stocks can go down as well as up. Values are shown at the time of each gift and aren&apos;t a promise of growth. B20 transfer policies are checked before delivery, and only a stock the child isn&apos;t allowed to hold is refunded to the giver.
             </p>
           </div>
         </div>

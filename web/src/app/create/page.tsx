@@ -1,17 +1,18 @@
 "use client";
 
 import clsx from "clsx";
-import { Baby, CalendarHeart, Check, Copy, Eye, Gift, LineChart, MessageCircleHeart, ShieldCheck, Sparkles, Undo2, Wallet, type LucideIcon } from "lucide-react";
+import { Baby, CalendarHeart, Check, Copy, Eye, Gift, LineChart, MessageCircleHeart, ShieldCheck, Sparkles, Sprout, Wallet, type LucideIcon } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { AVATAR_KINDS, ChildAvatar } from "@/components/ChildAvatar";
 import { Celebration } from "@/components/Celebration";
 import { PhotoUpload } from "@/components/PhotoUpload";
+import { DatePicker } from "@/components/DatePicker";
 import { StockLogo } from "@/components/StockLogo";
 import { Button, Card, Toggle, useToast } from "@/components/ui";
-import { ACCEPT_WINDOWS, DEFAULT_ACCEPT_WINDOW, acceptWindowLabel, giftTiming, type AvatarKind, type Gift as GiftT } from "@/lib/nests";
-import { createNest, saveOwned, sendGift, syncGift, uploadPhoto } from "@/lib/api";
+import { giftTiming, type AvatarKind, type Gift as GiftT } from "@/lib/nests";
+import { createNest, saveOwned, sendGift, uploadPhoto } from "@/lib/api";
 import { networkName, onchainEnabled } from "@/lib/chain";
-import { claimOnchainGift, connectWallet, createOnchainNest, hasBrowserWallet, sendStockGift, walletError } from "@/lib/wallet";
+import { connectWallet, createOnchainNest, hasBrowserWallet, sendStockGift, walletError } from "@/lib/wallet";
 
 type Created = { slug: string; token: string; nestName: string; childName: string; avatar: AvatarKind; photo?: string; showPhoto: boolean };
 import { STOCKS, stockBy } from "@/lib/stocks";
@@ -61,8 +62,7 @@ export default function CreatePage() {
   const [showAmounts, setShowAmounts] = useState(true);
   const [opensMode, setOpensMode] = useState<"now" | "date">("now");
   const [opensOn, setOpensOn] = useState("");
-  const [acceptWindow, setAcceptWindow] = useState<number>(DEFAULT_ACCEPT_WINDOW);
-  const rules = { opensOn: opensMode === "date" && opensOn ? opensOn : undefined, acceptWindow };
+  const rules = { opensOn: opensMode === "date" && opensOn ? opensOn : undefined };
   const [created, setCreated] = useState<Created | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +79,7 @@ export default function CreatePage() {
   // Nest saved server-side but the first gift didn't finish yet: retries reuse it instead of making a duplicate.
   const draft = useRef<{ slug: string; token: string; finalName: string; photo?: string; chainNestId?: number } | null>(null);
 
-  /** Parent's own first gift, done before the nest is shown as ready: vault → gift → accept. */
+  /** Parent's own first gift, done before the nest is shown as ready: vault → gift → nest. */
   async function runFirstGift(d: NonNullable<typeof draft.current>): Promise<GiftT> {
     const from = parentNames.trim() || "Mum & Dad";
     const message = firstMsg.trim();
@@ -106,18 +106,11 @@ export default function CreatePage() {
     const qr = await fetch("/api/quote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticker: firstTicker }) });
     const quote = await qr.json();
     if (!qr.ok) throw new Error(quote.error || "Couldn't get a price right now.");
-    const { unlockAt, expiresAt } = giftTiming(rules);
-    const txHash = await sendStockGift({ wallet, nestId: d.chainNestId, usdAmount: firstAmount, quote, message, unlockAt, expiresAt, onStep: setProgress });
-    setProgress("Recording your gift…");
-    let { gift } = await sendGift(d.slug, { mode: "buy", ticker: firstTicker, txHash, from, isPrivate: false, occasion, message });
-    // You're the giver and the guardian, so accept it into the nest right away.
-    if (gift.chainGiftId && !unlockAt) {
-      try {
-        setProgress("Accepting it into the nest…");
-        const claimTx = await claimOnchainGift(wallet, gift.chainGiftId);
-        gift = (await syncGift(d.slug, gift.id, claimTx)).gift;
-      } catch { /* stays "waiting to be accepted"; they can accept it from the dashboard */ }
-    }
+    const { unlockAt } = giftTiming(rules);
+    const txHash = await sendStockGift({ wallet, nestId: d.chainNestId, usdAmount: firstAmount, quote, message, unlockAt, onStep: setProgress });
+    // The server delivers it into the nest right away (or on the opening day).
+    setProgress(unlockAt ? "Wrapping your gift…" : "Putting it in the nest…");
+    const { gift } = await sendGift(d.slug, { mode: "buy", ticker: firstTicker, txHash, from, isPrivate: false, occasion, message });
     return gift;
   }
 
@@ -254,10 +247,9 @@ export default function CreatePage() {
           </Section>
 
           {/* 3 — gift rules */}
-          <Section n={3} icon={CalendarHeart} title="Gift rules" sub="You decide these once. Every gift follows them, so givers don't have to.">
-            <p className="mb-2 text-sm font-semibold">When can gifts be opened?</p>
+          <Section n={3} icon={CalendarHeart} title="When do gifts open?" sub="You decide once. Every gift follows it, so givers never have to choose.">
             <div className="grid grid-cols-2 gap-2">
-              {([["now", Sparkles, "When they arrive", "You accept them any time"], ["date", CalendarHeart, "On a special day", "Birthday, holiday…"]] as const).map(([id, Icon, t, d]) => {
+              {([["now", Sparkles, "Straight away", "Each gift lands in the nest as it's sent"], ["date", CalendarHeart, "On a special day", "Wrapped until a birthday or holiday"]] as const).map(([id, Icon, t, d]) => {
                 const on = opensMode === id;
                 return (
                   <button key={id} type="button" aria-pressed={on} onClick={() => { setOpensMode(id); if (id === "date" && !opensOn) setOpensOn(isoDay(30)); }}
@@ -270,23 +262,14 @@ export default function CreatePage() {
             </div>
             {opensMode === "date" && (
               <div className="mt-2.5">
-                <input type="date" aria-label="Gifts open on" className={inputCls} value={opensOn} min={isoDay(1)} onChange={(e) => setOpensOn(e.target.value)} />
-                <p className="mt-1.5 text-sm text-ink-3">{opensOn ? <>Gifts stay wrapped until <b className="text-ink">{fmtDay(opensOn)}</b>, like presents under the tree.</> : "Pick the day gifts open."}</p>
+                <DatePicker value={opensOn} onChange={setOpensOn} />
               </div>
             )}
-
-            <p className="mb-2 mt-5 text-sm font-semibold">How long do you have to accept a gift?</p>
-            <div className="grid grid-cols-4 gap-1.5 rounded-2xl bg-sand p-1">
-              {ACCEPT_WINDOWS.map((w) => (
-                <button key={w.secs} type="button" aria-pressed={acceptWindow === w.secs} onClick={() => setAcceptWindow(w.secs)}
-                  className={clsx("rounded-xl px-1 py-2 text-sm font-semibold leading-tight transition", acceptWindow === w.secs ? "bg-paper text-forest shadow-soft" : "text-ink-2")}>
-                  {w.label}{"note" in w && <span className="block text-[11px] font-medium text-ink-3">{w.note}</span>}
-                </button>
-              ))}
-            </div>
-            <p className="mt-2.5 flex gap-2 text-sm text-ink-3">
-              <Undo2 size={16} className="mt-0.5 shrink-0 text-forest" />
-              <span>Each gift waits in escrow until you accept it{opensMode === "date" && opensOn ? " (from the day gifts open)" : ""}. If you don&apos;t within {acceptWindowLabel(acceptWindow)}, it goes back to the giver, so nothing is ever lost.</span>
+            <p className="mt-3 flex gap-2 text-sm text-ink-3">
+              <Sprout size={16} className="mt-0.5 shrink-0 text-forest" />
+              <span>{opensMode === "date"
+                ? <>Gifts sent before then wait safely in escrow, then go into {childName.trim() || "your child"}&apos;s nest automatically that day. Nothing to accept, nothing bounces back.</>
+                : <>Every gift goes straight into {childName.trim() || "your child"}&apos;s nest. Nothing to accept, nothing bounces back.</>}</span>
             </p>
           </Section>
 
@@ -340,7 +323,7 @@ export default function CreatePage() {
                   placeholder={`Welcome to your nest, ${childName.trim() || "little one"}!`} />
                 <p className="mt-2 text-sm text-ink-3">
                   {onchainEnabled
-                    ? <>When you tap Create, your wallet opens to set up {childName.trim() || "your child"}&apos;s vault on {networkName} and send this gift{opensMode === "date" ? "" : ", then accept it into the nest"}. The nest is only finished once your gift is in.</>
+                    ? <>When you tap Create, your wallet opens to set up {childName.trim() || "your child"}&apos;s vault on {networkName} and send this gift{opensMode === "date" ? "" : ", which goes straight into the nest"}. The nest is only finished once your gift is in.</>
                     : <>Your gift is added as the nest is created.</>}
                 </p>
               </>
@@ -414,7 +397,7 @@ export default function CreatePage() {
               <b className="flex items-center gap-1.5 text-[15px]"><Check size={16} className="text-forest" />First gift in: {shares(firstGift.shares)} {stockBy(firstGift.ticker).name}</b>
               <span className="text-sm text-ink-2">
                 {firstGift.status === "pending"
-                  ? <>{usd(firstGift.usd, 2)} is waiting for you to accept it on your dashboard.</>
+                  ? <>{usd(firstGift.usd, 2)} from you, wrapped until {firstGift.unlockAt ? new Date(firstGift.unlockAt).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" }) : "the big day"}, then it goes into the nest automatically.</>
                   : <>{usd(firstGift.usd, 2)} from you{onchainEnabled && firstGift.status === "delivered" ? <>, delivered to {created.childName}&apos;s vault on {networkName}</> : null}.</>}
               </span>
             </div>
