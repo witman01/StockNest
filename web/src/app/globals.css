@@ -31,7 +31,7 @@
   --ease-nest: cubic-bezier(.2, .8, .2, 1);
 }
 
-@theme inline {
+@theme {
   --font-display: var(--font-fraunces), Georgia, serif;
   --font-sans: var(--font-jakarta), system-ui, sans-serif;
 }
@@ -189,7 +189,7 @@ body {
 .liquid::before, .liquid::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
 .liquid::before {
   padding: 1.5px; z-index: 1;
-  background: conic-gradient(from var(--a, 0deg), transparent 0 62%, rgba(242,179,74,.75), rgba(69,197,151,.75), transparent 90%);
+  background: conic-gradient(from var(--a, 0deg), transparent 0 62%, var(--liquid-a, rgba(242,179,74,.75)), var(--liquid-b, rgba(69,197,151,.75)), transparent 90%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
   animation: island-spin 6s linear infinite;
@@ -202,3 +202,64 @@ body {
 @keyframes fade-up { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
 .step-in { animation: step-in .25s var(--ease-nest) both; }
 @keyframes step-in { from { opacity: 0; transform: translateX(16px) } to { opacity: 1; transform: none } }
+
+
+/* =====================================================================
+   Looks: the original design plus two alternatives friends can vote on.
+   <html data-look="original|paper|charcoal"> (set before paint, see layout).
+   ===================================================================== */
+.only-paper, .only-charcoal { display: none; }
+.only-original { display: contents; }
+html[data-look="paper"] .only-original, html[data-look="charcoal"] .only-original { display: none; }
+html[data-look="paper"] .only-paper, html[data-look="charcoal"] .only-charcoal { display: contents; }
+
+html[data-look="paper"], html[data-look="paper"] [data-theme] {
+  --color-cream: #FFFFFF; --color-paper: #FFFFFF; --color-sand: #F2F4F8; --color-line: #E3E6ED;
+  --color-ink: #050505; --color-ink-2: #4A4D55; --color-ink-3: #8A8E99;
+  --color-forest: #1F4FD1; --color-forest-dark: #050505; --color-forest-soft: #EAF1FF; --color-mint: #D3E1FF;
+  --color-honey: #548CFF; --color-honey-soft: #EEF3FF; --color-sky: #8FB2FF; --color-sky-soft: #EEF3FF; --color-sage: #548CFF;
+  --color-onchain: #1F4FD1; --color-onchain-soft: #EAF1FF;
+  --color-pending: #8A5A00; --color-error: #C0261E; --color-error-soft: #FDE7E5;
+  --forest-text: #1F4FD1; --honey-ink: #1F4FD1;
+  --wash-a: #DCE7FF; --wash-b: #EEF3FF; --wash-bg: #F6F8FC;
+  --shadow-soft: 0 0 0 1px #E3E6ED; --shadow-float: 0 0 0 1px #E3E6ED, 0 18px 40px rgba(5,5,5,.08); --shadow-cta: none;
+  --celebrate-bg: radial-gradient(120% 80% at 50% 0%, #3D6FEA 0%, #1F4FD1 55%, #12348F 100%); --liquid-a: rgba(84,140,255,.9); --liquid-b: rgba(31,79,209,.9);
+  --radius-card: 6px; --radius-sm: 2px; --radius-md: 3px; --radius-lg: 4px; --radius-xl: 4px; --radius-2xl: 6px; --radius-3xl: 8px;
+  --font-display: var(--font-geist), system-ui, sans-serif; --font-sans: var(--font-geist), system-ui, sans-serif; --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  color-scheme: light;
+}
+html[data-look="charcoal"], html[data-look="charcoal"] [data-theme] {
+  --color-cream: #1E1E1C; --color-paper: #262624; --color-sand: #32312D; --color-line: #3A3934;
+  --color-ink: #F4EEE2; --color-ink-2: #D8CBB3; --color-ink-3: #A79C88;
+  --color-forest: #2F6BFF; --color-forest-dark: #4A80FF; --color-forest-soft: #1A2440; --color-mint: #22305A;
+  --color-honey: #D8CBB3; --color-honey-soft: #34302A; --color-sky: #8FB0FF; --color-sky-soft: #1E2638; --color-sage: #8FB0FF;
+  --color-onchain: #6F98FF; --color-onchain-soft: #1A2440;
+  --color-pending: #E9C987; --color-error: #FF8A80; --color-error-soft: #3A1E1B;
+  --forest-text: #8FB0FF; --honey-ink: #E9DCC3;
+  --wash-a: #3A3426; --wash-b: #1C2A4A; --wash-bg: #2A2925;
+  --shadow-soft: 0 0 0 1px #3A3934; --shadow-float: 0 0 0 1px #3A3934, 0 20px 44px rgba(0,0,0,.55); --shadow-cta: 0 6px 18px rgba(47,107,255,.35);
+  --celebrate-bg: radial-gradient(120% 80% at 50% 0%, #2B2B28 0%, #1E1E1C 60%, #141413 100%); --liquid-a: rgba(216,203,179,.6); --liquid-b: rgba(47,107,255,.9);
+  --radius-card: 14px; --radius-xl: 10px; --radius-2xl: 12px; --radius-3xl: 16px;
+  --font-display: var(--font-inter-tight), system-ui, sans-serif; --font-sans: var(--font-inter-tight), system-ui, sans-serif; --font-serif: var(--font-instrument), Georgia, serif;
+  color-scheme: dark;
+}
+
+/* paper: square, mono-labelled buttons; flat outlined cards; cornflower accents in headings */
+html[data-look="paper"] .btn { border-radius: 0; font-family: var(--font-mono); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+html[data-look="paper"] .btn-md { height: 50px; padding-inline: 24px; font-size: 13px; }
+html[data-look="paper"] .btn-sm { height: 40px; padding-inline: 16px; font-size: 12px; }
+html[data-look="paper"] .btn-secondary { border-width: 1px; border-color: var(--color-ink); background: var(--color-paper); color: var(--color-ink); }
+html[data-look="paper"] .card, html[data-look="charcoal"] .card { box-shadow: none; border: 1px solid var(--color-line); }
+html[data-look="paper"] .font-display { letter-spacing: -0.035em; }
+html[data-look="paper"] h1.font-display em, html[data-look="paper"] h2.font-display em { font-style: normal; color: #548CFF; }
+html[data-look="paper"] .liquid::after { box-shadow: inset 0 0 0 1px #E3E6ED; }
+.mono-label { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+
+/* charcoal: soft-square buttons, serif italics inside headings */
+html[data-look="charcoal"] .btn { border-radius: 8px; font-weight: 600; }
+html[data-look="charcoal"] .btn-secondary { border-width: 1px; border-color: var(--color-line); color: var(--color-ink); }
+html[data-look="charcoal"] .font-display { letter-spacing: -0.03em; }
+html[data-look="charcoal"] h1 em, html[data-look="charcoal"] h2 em, html[data-look="charcoal"] h3 em { font-family: var(--font-serif); font-weight: 400; font-style: italic; letter-spacing: -0.01em; }
+html[data-look="charcoal"] .liquid::after { box-shadow: inset 0 0 0 1px rgba(216,203,179,.14); }
+.eyebrow-line { display: inline-flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--color-ink-3); }
+.eyebrow-line::before { content: ""; width: 22px; height: 1px; background: currentColor; }

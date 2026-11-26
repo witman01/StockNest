@@ -17,10 +17,10 @@ type BtnProps = {
 
 export function Button({ variant = "primary", size = "md", block, href, className, children, ...rest }: BtnProps) {
   const cls = clsx(
-    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-bold transition duration-200 ease-[var(--ease-nest)] active:scale-[.98] disabled:cursor-not-allowed disabled:bg-sand disabled:text-ink-3 disabled:shadow-none",
-    size === "md" ? "h-[52px] px-7 text-base" : "h-[42px] px-[18px] text-[15px]",
+    "btn inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-bold transition duration-200 ease-[var(--ease-nest)] active:scale-[.98] disabled:cursor-not-allowed disabled:bg-sand disabled:text-ink-3 disabled:shadow-none",
+    size === "md" ? "btn-md h-[52px] px-7 text-base" : "btn-sm h-[42px] px-[18px] text-[15px]",
     variant === "primary" && "bg-forest text-white shadow-cta hover:bg-forest-dark",
-    variant === "secondary" && "border-2 border-forest text-forest hover:bg-forest-soft",
+    variant === "secondary" && "btn-secondary border-2 border-forest text-forest hover:bg-forest-soft",
     variant === "ghost" && "h-11 px-2 text-forest hover:underline",
     block && "w-full",
     className,
@@ -30,7 +30,7 @@ export function Button({ variant = "primary", size = "md", block, href, classNam
 }
 
 export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={clsx("rounded-[var(--radius-card)] bg-paper p-6 shadow-soft", className)}>{children}</div>;
+  return <div className={clsx("card rounded-[var(--radius-card)] bg-paper p-6 shadow-soft", className)}>{children}</div>;
 }
 
 const chipTones = {

@@ -4,6 +4,8 @@ import { RotatingHeadline } from "@/components/RotatingHeadline";
 import { StockLogo } from "@/components/StockLogo";
 import { ChildAvatar } from "@/components/ChildAvatar";
 import { SiteFooter } from "@/components/SiteHeader";
+import { PaperHome } from "@/components/looks/paper/Home";
+import { CharcoalHome } from "@/components/looks/charcoal/Home";
 import { LogoMark } from "@/components/Logo";
 import { Button, Card, Chip, AllocationBar } from "@/components/ui";
 import { SEED_NESTS, nestTotals } from "@/lib/nests";
@@ -14,7 +16,7 @@ const Eyebrow = ({ children }: { children: React.ReactNode }) => (
   <span className="text-xs font-bold uppercase tracking-[.06em] text-forest">{children}</span>
 );
 
-export default function Home() {
+function OriginalHome() {
   const amelia = SEED_NESTS[0];
   const t = nestTotals(amelia);
 
@@ -212,6 +214,17 @@ export default function Home() {
         </div>
       </section>
       <SiteFooter />
+    </>
+  );
+}
+
+/** All three looks render; CSS shows the one picked in the look switcher. */
+export default function Home() {
+  return (
+    <>
+      <div className="only-original"><OriginalHome /></div>
+      <div className="only-paper"><PaperHome /></div>
+      <div className="only-charcoal"><CharcoalHome /></div>
     </>
   );
 }

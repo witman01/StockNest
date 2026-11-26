@@ -60,7 +60,7 @@ export function Celebration({ open, onClose, steps, title, subtitle, children, s
         <div
           role="dialog" aria-modal="true" aria-label="Celebration" data-theme="light"
           className="cel-in fixed inset-0 z-[100] overflow-y-auto text-ink"
-          style={{ background: "radial-gradient(120% 80% at 50% 0%, #17705A 0%, #0C513F 55%, #083B2E 100%)" }}
+          style={{ background: "var(--celebrate-bg, radial-gradient(120% 80% at 50% 0%, #17705A 0%, #0C513F 55%, #083B2E 100%))" }}
         >
           <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-[2] h-full w-full" />
           <button onClick={onClose} aria-label="Close" className="fixed right-3.5 top-3.5 z-[3] grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white hover:bg-white/25">

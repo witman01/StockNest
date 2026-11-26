@@ -371,7 +371,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                   ))}
                 </div>
                 <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-line p-3.5 text-sm">
-                  <input type="checkbox" checked={eligible} onChange={(e) => setEligible(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[#0C513F]" />
+                  <input type="checkbox" checked={eligible} onChange={(e) => setEligible(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--color-forest)]" />
                   <span><b>I&apos;m not a US person and I&apos;m 18 or older.</b> <span className="text-ink-2">Tokenized stocks are only offered outside the United States.</span></span>
                 </label>
                 <div className="mt-4 flex gap-2.5 rounded-2xl bg-sky-soft p-3.5 text-sm text-ink-2">
