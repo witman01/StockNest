@@ -19,9 +19,11 @@ type Props = {
   shareTitle: string;
   shareLine: string;
   secondary: { label: string; href: string };
+  /** A printed receipt shown at the top (nest created / gift sent). */
+  receipt?: React.ReactNode;
 };
 
-export function Celebration({ open, onClose, steps, title, subtitle, children, shareUrl, shareTitle, shareLine, secondary }: Props) {
+export function Celebration({ open, onClose, steps, title, subtitle, children, shareUrl, shareTitle, shareLine, secondary, receipt }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast, toastNode } = useToast();
 
@@ -68,11 +70,13 @@ export function Celebration({ open, onClose, steps, title, subtitle, children, s
           </button>
 
           <div className="cel-pop relative z-[1] mx-auto grid max-w-[460px] gap-3 px-4 pb-8 pt-14 sm:gap-4">
-            <div className="grid place-items-center rounded-[22px] bg-white p-3.5 shadow-[0_10px_30px_rgba(0,0,0,.18)]">
-              <span className="flex items-center gap-2.5 font-display text-xl font-bold"><LogoMark size={34} /><span>Stock<span className="text-forest">Nest</span></span></span>
-            </div>
+            {receipt ? <div className="pb-2">{receipt}</div> : (
+              <div className="grid place-items-center rounded-[6px] bg-white p-3.5 shadow-[0_10px_30px_rgba(0,0,0,.18)]">
+                <span className="flex items-center gap-2.5 text-xl font-semibold tracking-[-.02em]"><LogoMark size={30} /><span>StockNest</span></span>
+              </div>
+            )}
 
-            <div className="rounded-[22px] bg-white px-5 pb-6 pt-6 text-center sm:px-6 shadow-[0_10px_30px_rgba(0,0,0,.18)]">
+            <div className="rounded-[6px] bg-white px-5 pb-6 pt-6 text-center sm:px-6 shadow-[0_10px_30px_rgba(0,0,0,.18)]">
               <div className="relative mx-auto mb-1.5 flex max-w-[300px] justify-between">
                 <div className="absolute left-[16%] right-[16%] top-[17px] h-[3px] rounded bg-forest" />
                 {steps.map((s, i) => (
@@ -90,10 +94,10 @@ export function Celebration({ open, onClose, steps, title, subtitle, children, s
               <Button variant="ghost" href={secondary.href} className="mt-2">{secondary.label}</Button>
             </div>
 
-            <div className="flex items-center justify-center gap-2.5 rounded-[22px] bg-white p-5 text-[17px] text-ink-2 shadow-[0_10px_30px_rgba(0,0,0,.18)]">
+            <div className="flex items-center justify-center gap-2.5 rounded-[6px] bg-white p-5 text-[17px] text-ink-2 shadow-[0_10px_30px_rgba(0,0,0,.18)]">
               Powered by <b className="flex items-center gap-2 text-[19px] text-ink"><i className="inline-block h-5 w-5 rounded bg-onchain" />Base</b>
             </div>
-            <div className="flex items-center justify-center gap-2 font-medium text-[#d6ebe2]"><Lock size={17} />Secured onchain</div>
+            <div className="flex items-center justify-center gap-2 font-medium text-white/75"><Lock size={17} />Secured onchain</div>
           </div>
           {toastNode}
         </div>

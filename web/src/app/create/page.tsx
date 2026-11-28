@@ -7,7 +7,8 @@ import { AVATAR_KINDS, ChildAvatar } from "@/components/ChildAvatar";
 import { Celebration } from "@/components/Celebration";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { PixelIcon, type PixelName } from "@/components/PixelIcon";
-import { DatePicker } from "@/components/DatePicker";
+import { DatePicker, prettyDay } from "@/components/DatePicker";
+import { ReceiptPrinter } from "@/components/ReceiptPrinter";
 import { StockLogo } from "@/components/StockLogo";
 import { Button, Card, Toggle, useToast } from "@/components/ui";
 import { giftTiming, type AvatarKind, type Gift as GiftT } from "@/lib/nests";
@@ -380,6 +381,23 @@ export default function CreatePage() {
         shareTitle={`Gift ${created?.childName ?? ""} a stock 🎁`}
         shareLine="Help spread the word and share this nest"
         secondary={{ label: "Open my parent dashboard", href: created ? `/dashboard/${created.slug}` : "/dashboard" }}
+        receipt={created && (
+          <ReceiptPrinter
+            kicker="Nest created"
+            amount={`${created.childName}'s nest`}
+            rows={[
+              ["For", created.childName],
+              ["Stocks", picks.join(" · ")],
+              ["Opens", opensMode === "date" && opensOn ? prettyDay(opensOn) : "Straight away"],
+              ["First gift", firstGift ? `${shares(firstGift.shares)} ${firstGift.ticker} · ${usd(firstGift.usd, 2)}` : "None yet"],
+              ["Guardian", "You, the parent"],
+              ["Link", url.replace(/^https?:\/\//, "")],
+            ]}
+            stamp="Live"
+            tx={firstGift?.txHash}
+            footer={onchainEnabled ? `${networkName} testnet` : "Demo"}
+          />
+        )}
       >
         {created && (
           <div className="flex items-center gap-2 rounded-2xl bg-sand py-1.5 pl-3.5 pr-1.5 text-[15px] font-semibold">

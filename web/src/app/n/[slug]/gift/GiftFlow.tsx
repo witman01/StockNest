@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ChildAvatar } from "@/components/ChildAvatar";
 import { Celebration, DeliveryTracker } from "@/components/Celebration";
+import { ReceiptPrinter } from "@/components/ReceiptPrinter";
 import { StockLogo } from "@/components/StockLogo";
 import { Button, Card, Chip, Toggle } from "@/components/ui";
 import type { Gift, GiftMode, PublicNest } from "@/lib/nests";
@@ -407,6 +408,23 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
         shareTitle={`Gift ${kid} a stock 🎁`}
         shareLine={`Help spread the word and share ${kid}'s nest`}
         secondary={{ label: `View ${kid}'s gift page`, href: `/n/${nest.slug}` }}
+        receipt={sent && (
+          <ReceiptPrinter
+            kicker={pending ? "Gift wrapped" : returned ? "Gift refunded" : "Gift sent"}
+            amount={`${usd(sent.usd, 2)}${mode === "buy" ? " USDC" : ""}`}
+            rows={[
+              ["To", `${kid}'s nest`],
+              ["Stock", `${fmtShares(sent.shares)} ${stock.ticker}`],
+              ["From", sent.isPrivate || !name.trim() ? "Private" : name.trim()],
+              ["Occasion", occasion.replace(/^\S+\s/, "")],
+              ["Opens", returned ? "Not delivered" : pending && sent.unlockAt ? fmtDay(sent.unlockAt) : "Now, in the nest"],
+              ["Gas", onchain ? "Covered by StockNest" : "None"],
+            ]}
+            stamp={pending ? "Wrapped" : returned ? "Refund" : "Sent"}
+            tx={isRealTx(sent.txHash) ? sent.txHash : undefined}
+            footer={onchain ? `${networkName} testnet` : "Demo"}
+          />
+        )}
       >
         {sent && (
           <div className="mb-3 flex items-center gap-3 rounded-2xl border border-line px-3.5 py-3">
