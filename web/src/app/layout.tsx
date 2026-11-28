@@ -10,7 +10,7 @@ const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono"
 export const metadata: Metadata = {
   title: "StockNest: Give them stocks, not just presents",
   description: "A family stock-gifting platform on Base. Create a Stock Nest for your child and let family gift real tokenized stocks with a message.",
-  icons: { icon: "/icon.svg" },
+  icons: { icon: "/icon.svg?v=paper", apple: "/icon.svg?v=paper" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

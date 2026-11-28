@@ -1,11 +1,12 @@
 "use client";
 
 import clsx from "clsx";
-import { Baby, CalendarHeart, Check, Copy, Eye, Gift, LineChart, MessageCircleHeart, ShieldCheck, Sparkles, Sprout, Wallet, type LucideIcon } from "lucide-react";
+import { CalendarHeart, Check, Copy, Eye, Gift, ShieldCheck, Sprout, Wallet } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { AVATAR_KINDS, ChildAvatar } from "@/components/ChildAvatar";
 import { Celebration } from "@/components/Celebration";
 import { PhotoUpload } from "@/components/PhotoUpload";
+import { PixelIcon, type PixelName } from "@/components/PixelIcon";
 import { DatePicker } from "@/components/DatePicker";
 import { StockLogo } from "@/components/StockLogo";
 import { Button, Card, Toggle, useToast } from "@/components/ui";
@@ -25,12 +26,12 @@ const isoDay = (days: number) => new Date(Date.now() + days * 86400e3).toISOStri
 const fmtDay = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
 /** One numbered step of the form. */
-function Section({ n, icon: Icon, title, sub, right, children }: { n: number; icon: LucideIcon; title: string; sub: string; right?: React.ReactNode; children: React.ReactNode }) {
+function Section({ n, icon, title, sub, right, children }: { n: number; icon: PixelName; title: string; sub: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
     <Card className="p-5! md:p-6!">
       <div className="mb-4 flex items-start gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center border border-ink bg-forest-soft text-forest">
-          <Icon size={19} />
+          <PixelIcon name={icon} size={27} />
         </span>
         <div className="min-w-0 flex-1">
           <span className="mono-label text-forest">Step {String(n).padStart(2, "0")}</span>
@@ -195,7 +196,7 @@ export default function CreatePage() {
 
         <div className="grid gap-4">
           {/* 1 — who */}
-          <Section n={1} icon={Baby} title="Who is this nest for?" sub="Family sees this name and picture on the gift page.">
+          <Section n={1} icon="child" title="Who is this nest for?" sub="Family sees this name and picture on the gift page.">
             <Label htmlFor="childName" first>Child&apos;s display name</Label>
             <input id="childName" className={inputCls} value={childName} maxLength={24} placeholder="e.g. Zara" onBlur={() => setChildTouched(true)}
               onChange={(e) => { setChildName(e.target.value); if (!nameTouched) setNestName(`${e.target.value.trim() || "Your child"}'s Stock Nest`); }} />
@@ -229,16 +230,16 @@ export default function CreatePage() {
           </Section>
 
           {/* 2 — stocks */}
-          <Section n={2} icon={LineChart} title="Stocks family can gift" sub={`Choose up to 6. ${picks.length}/6 picked.`}>
+          <Section n={2} icon="chart" title="Stocks family can gift" sub={`Choose up to 6. ${picks.length}/6 picked.`}>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {STOCKS.map((s) => {
                 const on = picks.includes(s.ticker);
                 return (
                   <button key={s.ticker} type="button" onClick={() => togglePick(s.ticker)} aria-pressed={on}
-                    className={clsx("relative flex items-center gap-2.5 rounded-2xl border-2 p-2.5 text-left transition", on ? "border-forest bg-forest-soft" : "border-line bg-paper hover:border-ink-3")}>
+                    className={clsx("relative flex items-center gap-2.5 rounded-[4px] border p-2.5 pr-8 text-left transition", on ? "border-ink bg-forest-soft" : "border-line bg-paper hover:border-ink")}>
                     <StockLogo ticker={s.ticker} size={34} />
                     <span className="min-w-0 leading-tight"><b className="block truncate text-[15px]">{s.name}</b><span className="text-xs text-ink-3">{s.ticker}</span></span>
-                    {on && <span className="absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-forest text-white"><Check size={12} strokeWidth={3} /></span>}
+                    {on && <span className="absolute right-2 top-2 grid h-5 w-5 place-items-center bg-ink text-white"><Check size={12} strokeWidth={3} /></span>}
                   </button>
                 );
               })}
@@ -247,14 +248,14 @@ export default function CreatePage() {
           </Section>
 
           {/* 3 — gift rules */}
-          <Section n={3} icon={CalendarHeart} title="When do gifts open?" sub="You decide once. Every gift follows it, so givers never have to choose.">
+          <Section n={3} icon="calendar" title="When do gifts open?" sub="You decide once. Every gift follows it, so givers never have to choose.">
             <div className="grid grid-cols-2 gap-2">
-              {([["now", Sparkles, "Straight away", "Each gift lands in the nest as it's sent"], ["date", CalendarHeart, "On a special day", "Wrapped until a birthday or holiday"]] as const).map(([id, Icon, t, d]) => {
+              {([["now", "bolt", "Straight away", "Each gift lands in the nest as it's sent"], ["date", "calendar", "On a special day", "Wrapped until a birthday or holiday"]] as const).map(([id, glyph, t, d]) => {
                 const on = opensMode === id;
                 return (
                   <button key={id} type="button" aria-pressed={on} onClick={() => { setOpensMode(id); if (id === "date" && !opensOn) setOpensOn(isoDay(30)); }}
-                    className={clsx("flex items-start gap-2.5 rounded-2xl border-2 p-3 text-left transition", on ? "border-forest bg-forest-soft" : "border-line bg-paper hover:border-ink-3")}>
-                    <span className={clsx("grid h-9 w-9 shrink-0 place-items-center rounded-xl", on ? "bg-forest text-white" : "bg-sand text-forest")}><Icon size={17} /></span>
+                    className={clsx("flex items-start gap-2.5 border p-3 text-left transition", on ? "border-ink bg-forest-soft" : "border-line bg-paper hover:border-ink")}>
+                    <span className={clsx("grid h-9 w-9 shrink-0 place-items-center border", on ? "border-forest bg-forest" : "border-line bg-paper")}><PixelIcon name={glyph} size={18} tone={on ? "white" : "blue"} /></span>
                     <span className="leading-tight"><b className="block text-[15px]">{t}</b><span className="text-[13px] text-ink-3">{d}</span></span>
                   </button>
                 );
@@ -274,7 +275,7 @@ export default function CreatePage() {
           </Section>
 
           {/* 4 — note */}
-          <Section n={4} icon={MessageCircleHeart} title="A note for family & friends" sub="Shown at the top of the gift page.">
+          <Section n={4} icon="note" title="A note for family & friends" sub="Shown at the top of the gift page.">
             <Label htmlFor="note" first>Your note</Label>
             <textarea id="note" className={clsx(inputCls, "font-display min-h-24 text-[17px] italic")} value={note} maxLength={180} onChange={(e) => setNote(e.target.value)}
               placeholder={`Instead of another toy this year, help us give ${childName.trim() || "our child"} a piece of the companies shaping their future.`} />
@@ -298,7 +299,7 @@ export default function CreatePage() {
           </Section>
 
           {/* 5 — first gift */}
-          <Section n={5} icon={Gift} title="Start it off yourself" sub="Optional. Family is more likely to give when the nest isn't empty."
+          <Section n={5} icon="gift" title="Start it off yourself" sub="Optional. Family is more likely to give when the nest isn't empty."
             right={<Toggle on={firstOn} onChange={setFirstOn} label="Add the first gift yourself" />}>
             {firstOn ? (
               <>
@@ -306,7 +307,7 @@ export default function CreatePage() {
                 <div className="flex flex-wrap gap-2">
                   {picks.map((t) => (
                     <button key={t} type="button" onClick={() => setFirstPick(t)} aria-pressed={firstTicker === t}
-                      className={clsx("flex items-center gap-2 rounded-full border-2 py-1 pl-1 pr-3 text-sm font-semibold transition", firstTicker === t ? "border-forest bg-forest-soft" : "border-line bg-paper hover:border-ink-3")}>
+                      className={clsx("flex items-center gap-2 rounded-full border-2 py-1 pl-1 pr-3 text-sm font-semibold transition", firstTicker === t ? "border-ink bg-forest-soft" : "border-line bg-paper hover:border-ink")}>
                       <StockLogo ticker={t} size={24} />{stockBy(t).name}
                     </button>
                   ))}
@@ -391,7 +392,7 @@ export default function CreatePage() {
           </div>
         )}
         {created && firstGift && (
-          <div className="mt-3 flex items-center gap-3 rounded-2xl border-2 border-forest bg-forest-soft/40 p-3.5 text-left">
+          <div className="mt-3 flex items-center gap-3 rounded-[4px] border border-forest bg-forest-soft/40 p-3.5 text-left">
             <StockLogo ticker={firstGift.ticker} size={36} />
             <div className="min-w-0 flex-1">
               <b className="flex items-center gap-1.5 text-[15px]"><Check size={16} className="text-forest" />First gift in: {shares(firstGift.shares)} {stockBy(firstGift.ticker).name}</b>

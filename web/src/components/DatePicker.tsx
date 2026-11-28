@@ -1,41 +1,52 @@
 "use client";
 
 import clsx from "clsx";
-import { CalendarHeart, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useMemo, useState } from "react";
+import { CalendarHeart, ChevronDown } from "lucide-react";
+import { useMemo } from "react";
 
 /** Dates are yyyy-mm-dd strings (UTC midnight), matching the nest's opensOn. */
 const pad = (n: number) => String(n).padStart(2, "0");
 const iso = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
-const todayIso = () => new Date().toISOString().slice(0, 10);
-const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+const parts = (s: string) => ({ y: +s.slice(0, 4), m: +s.slice(5, 7) - 1, d: +s.slice(8, 10) });
+const daysIn = (y: number, m: number) => new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
 const MAX_YEARS = 20; // the contract allows gifts to open up to 20 years ahead
+const MONTHS = Array.from({ length: 12 }, (_, m) => new Date(Date.UTC(2000, m, 1)).toLocaleDateString(undefined, { month: "long", timeZone: "UTC" }));
 
 export const prettyDay = (d: string) =>
   new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
+const todayIso = () => new Date().toISOString().slice(0, 10);
+function plusDays(days: number) { return new Date(Date.now() + days * 86400e3).toISOString().slice(0, 10); }
 /** Next occurrence of a month/day strictly after today. */
 function nextOf(month: number, day: number) {
-  const t = todayIso();
-  const y = new Date().getUTCFullYear();
+  const t = todayIso(), y = new Date().getUTCFullYear();
   const a = iso(y, month, day);
   return a > t ? a : iso(y + 1, month, day);
 }
-function plusDays(days: number) {
-  return new Date(Date.now() + days * 86400e3).toISOString().slice(0, 10);
+
+/** A native select dressed as a square Paper field: on phones it opens the system wheel. */
+function Field({ id, label, value, onChange, children, className }: { id: string; label: string; value: number; onChange: (v: number) => void; children: React.ReactNode; className?: string }) {
+  return (
+    <label htmlFor={id} className={clsx("relative block", className)}>
+      <span className="mono-label mb-1.5 block text-ink-3">{label}</span>
+      <select id={id} value={value} onChange={(e) => onChange(+e.target.value)}
+        className="num h-12 w-full cursor-pointer appearance-none rounded-[3px] border border-[#CDD2DC] bg-paper pl-3.5 pr-9 text-[15px] font-semibold text-ink outline-none transition hover:border-ink focus:border-ink focus:shadow-[0_0_0_3px_#D3E1FF]">
+        {children}
+      </select>
+      <ChevronDown size={16} className="pointer-events-none absolute bottom-4 right-3 text-ink-3" />
+    </label>
+  );
 }
 
 /**
- * A friendly inline calendar: quick picks for common gift days, then a month grid.
- * Past days (and today) can't be picked.
+ * Pick the day gifts open: quick picks for common days, then Day / Month / Year.
+ * Days before tomorrow and after 20 years can't be picked.
  */
 export function DatePicker({ value, onChange, label = "Gifts open on" }: { value: string; onChange: (d: string) => void; label?: string }) {
   const min = plusDays(1);
-  const start = value || min;
-  const [view, setView] = useState(() => ({ y: +start.slice(0, 4), m: +start.slice(5, 7) - 1 }));
-  const [chooser, setChooser] = useState(false);
-  const minY = +min.slice(0, 4), minM = +min.slice(5, 7) - 1;
-  const years = Array.from({ length: MAX_YEARS }, (_, i) => minY + i);
+  const max = useMemo(() => { const p = parts(min); return iso(p.y + MAX_YEARS - 1, 11, 31); }, [min]);
+  const cur = parts(value || min);
+  const lo = parts(min);
 
   const quick = useMemo(() => [
     { t: "In a month", d: plusDays(30) },
@@ -45,91 +56,47 @@ export function DatePicker({ value, onChange, label = "Gifts open on" }: { value
     { t: "In 5 years", d: plusDays(5 * 365 + 1) },
   ], []);
 
-  const cells = useMemo(() => {
-    const first = new Date(Date.UTC(view.y, view.m, 1));
-    const lead = (first.getUTCDay() + 6) % 7; // Monday first
-    const days = new Date(Date.UTC(view.y, view.m + 1, 0)).getUTCDate();
-    const out: (string | null)[] = Array(lead).fill(null);
-    for (let d = 1; d <= days; d++) out.push(iso(view.y, view.m, d));
-    while (out.length % 7) out.push(null);
-    return out;
-  }, [view]);
+  /** Change one part; keep the day valid for the month and the date inside [min, max]. */
+  const set = (p: Partial<{ y: number; m: number; d: number }>) => {
+    const y = p.y ?? cur.y, m = p.m ?? cur.m;
+    const d = Math.min(p.d ?? cur.d, daysIn(y, m));
+    let next = iso(y, m, d);
+    if (next < min) next = min;
+    if (next > max) next = max;
+    onChange(next);
+  };
 
-  const monthName = new Date(Date.UTC(view.y, view.m, 1)).toLocaleDateString(undefined, { month: "long", year: "numeric", timeZone: "UTC" });
-  const canPrev = view.y * 12 + view.m > minY * 12 + minM;
-  const canNext = view.y < minY + MAX_YEARS - 1 || view.m < 11;
-  const shift = (n: number) => setView((v) => { const t = v.y * 12 + v.m + n; return { y: Math.floor(t / 12), m: t % 12 }; });
-  const pick = (d: string) => { onChange(d); setView({ y: +d.slice(0, 4), m: +d.slice(5, 7) - 1 }); };
-  const today = todayIso();
+  const years = Array.from({ length: MAX_YEARS }, (_, i) => lo.y + i);
 
   return (
-    <div className="rounded-2xl border border-line bg-paper p-3.5" role="group" aria-label={label}>
+    <div className="border border-line bg-paper p-3.5" role="group" aria-label={label}>
       <div className="flex flex-wrap gap-1.5">
         {quick.map((q) => (
-          <button key={q.t} type="button" onClick={() => pick(q.d)} aria-pressed={value === q.d}
-            className={clsx("rounded-full px-3 py-1.5 text-[13px] font-semibold transition", value === q.d ? "bg-forest text-white" : "bg-honey-soft text-ink hover:bg-honey")}>
+          <button key={q.t} type="button" onClick={() => onChange(q.d)} aria-pressed={value === q.d}
+            className={clsx("border px-3 py-1.5 text-[13px] font-semibold transition", value === q.d ? "border-ink bg-ink text-white" : "border-line bg-paper text-ink hover:border-ink")}>
             {q.t}
           </button>
         ))}
       </div>
 
-      <div className="mt-3.5 flex items-center justify-between">
-        <button type="button" onClick={() => shift(-1)} disabled={!canPrev} aria-label="Previous month"
-          className="grid h-9 w-9 place-items-center rounded-full text-ink-2 transition hover:bg-sand disabled:opacity-30"><ChevronLeft size={18} /></button>
-        <button type="button" onClick={() => setChooser((c) => !c)} aria-expanded={chooser}
-          className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 transition hover:bg-sand">
-          <b className="font-display text-[17px]">{monthName}</b>
-          <ChevronDown size={16} className={clsx("text-ink-3 transition", chooser && "rotate-180")} />
-        </button>
-        <button type="button" onClick={() => shift(1)} disabled={!canNext} aria-label="Next month"
-          className="grid h-9 w-9 place-items-center rounded-full text-ink-2 transition hover:bg-sand disabled:opacity-30"><ChevronRight size={18} /></button>
+      <div className="mt-3.5 grid grid-cols-[1fr_1.6fr_1.2fr] gap-2">
+        <Field id="opens-day" label="Day" value={cur.d} onChange={(d) => set({ d })}>
+          {Array.from({ length: daysIn(cur.y, cur.m) }, (_, i) => i + 1).map((d) => (
+            <option key={d} value={d} disabled={iso(cur.y, cur.m, d) < min}>{d}</option>
+          ))}
+        </Field>
+        <Field id="opens-month" label="Month" value={cur.m} onChange={(m) => set({ m })}>
+          {MONTHS.map((name, m) => (
+            <option key={m} value={m} disabled={cur.y === lo.y && m < lo.m}>{name}</option>
+          ))}
+        </Field>
+        <Field id="opens-year" label="Year" value={cur.y} onChange={(y) => set({ y })}>
+          {years.map((y) => <option key={y} value={y}>{y}</option>)}
+        </Field>
       </div>
-
-      {chooser ? (
-        <div className="mt-2">
-          <p className="mb-1.5 mono-label text-ink-3">Year</p>
-          <div className="grid max-h-[124px] grid-cols-5 gap-1.5 overflow-y-auto pr-1">
-            {years.map((y) => (
-              <button key={y} type="button" onClick={() => setView((v) => ({ y, m: y === minY && v.m < minM ? minM : v.m }))} aria-pressed={view.y === y}
-                className={clsx("num h-9 rounded-xl text-[14px] font-semibold transition", view.y === y ? "bg-forest text-white" : "bg-sand text-ink hover:bg-forest-soft")}>{y}</button>
-            ))}
-          </div>
-          <p className="mb-1.5 mt-3 mono-label text-ink-3">Month</p>
-          <div className="grid grid-cols-4 gap-1.5">
-            {Array.from({ length: 12 }, (_, m) => {
-              const off = view.y === minY && m < minM;
-              const name = new Date(Date.UTC(2000, m, 1)).toLocaleDateString(undefined, { month: "short", timeZone: "UTC" });
-              return (
-                <button key={m} type="button" disabled={off} onClick={() => { setView((v) => ({ ...v, m })); setChooser(false); }} aria-pressed={view.m === m}
-                  className={clsx("h-9 rounded-xl text-[14px] font-semibold transition disabled:opacity-30", view.m === m ? "bg-forest text-white" : "bg-sand text-ink hover:bg-forest-soft")}>{name}</button>
-              );
-            })}
-          </div>
-        </div>
-      ) : (<>
-
-      <div className="mt-2 grid grid-cols-7 text-center mono-label text-ink-3">
-        {WEEKDAYS.map((w) => <span key={w} className="py-1">{w}</span>)}
-      </div>
-      <div className="grid grid-cols-7 gap-y-1 text-center">
-        {cells.map((d, i) => {
-          if (!d) return <span key={i} />;
-          const off = d < min;
-          const on = d === value;
-          return (
-            <button key={d} type="button" disabled={off} onClick={() => pick(d)} aria-pressed={on} aria-label={prettyDay(d)}
-              className={clsx("num mx-auto grid h-9 w-9 place-items-center rounded-full text-[14px] font-semibold transition",
-                on ? "bg-forest text-white shadow-soft" : off ? "text-ink-3/40" : "text-ink hover:bg-forest-soft",
-                d === today && !on && "ring-1 ring-line")}>
-              {+d.slice(8)}
-            </button>
-          );
-        })}
-      </div>
-      </>)}
 
       {value && (
-        <div className="mt-3 flex items-center gap-2 rounded-xl bg-forest-soft px-3 py-2.5 text-sm">
+        <div key={value} className="fade-up mt-3 flex items-center gap-2 bg-forest-soft px-3 py-2.5 text-sm">
           <CalendarHeart size={16} className="shrink-0 text-forest" />
           <span>Gifts open <b>{prettyDay(value)}</b></span>
         </div>

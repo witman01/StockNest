@@ -222,8 +222,8 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                     const pick = nest.picks.includes(s.ticker);
                     return (
                       <button key={s.ticker} disabled={disabled} onClick={() => setTicker(s.ticker)}
-                        className={clsx("relative flex items-center gap-3 rounded-2xl border-2 p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-45",
-                          ticker === s.ticker ? "border-forest bg-forest-soft" : "border-line bg-paper hover:border-ink-3")}>
+                        className={clsx("relative flex items-center gap-3 rounded-[4px] border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-45",
+                          ticker === s.ticker ? "border-ink bg-forest-soft" : "border-line bg-paper hover:border-ink")}>
                         {pick && mode === "buy" && <span className="absolute -top-2.5 right-2.5"><Chip tone="honey" xs>Parents&apos; pick</Chip></span>}
                         <StockLogo ticker={s.ticker} size={44} />
                         <span className="min-w-0">
@@ -248,7 +248,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                     <div className="my-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                       {AMOUNTS.map((a) => (
                         <button key={a} onClick={() => { setAmount(a); setCustom(""); }}
-                          className={clsx("num h-16 rounded-2xl border-2 font-bold transition", !custom && amount === a ? "border-forest bg-forest text-white" : "border-line bg-paper")}>
+                          className={clsx("num h-16 rounded-[4px] border font-bold transition", !custom && amount === a ? "border-forest bg-forest text-white" : "border-line bg-paper")}>
                           <span className="block text-xl leading-tight">${a}</span>
                           <span className={clsx("block text-xs font-semibold", !custom && amount === a ? "text-white/80" : "text-ink-3")}>≈ {fmtShares(a / livePrice)} sh</span>
                         </button>
@@ -333,7 +333,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                     <p className="mb-2 mt-5 text-sm font-semibold">Pay with</p>
                     <div className="grid gap-2.5">
                       {!browserWallet && mmLink && (
-                        <a href={mmLink} className="flex items-center gap-3.5 rounded-2xl border-2 border-line bg-paper p-3.5 text-left transition hover:border-ink-3">
+                        <a href={mmLink} className="flex items-center gap-3.5 rounded-[4px] border border-line bg-paper p-3.5 text-left transition hover:border-ink-3">
                           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-honey-soft text-forest"><Wallet size={19} /></span>
                           <span><b className="block">Open in the MetaMask app</b><small className="text-sm text-ink-2">On your phone? This opens this gift inside MetaMask so you can pay there.</small></span>
                         </a>
@@ -342,12 +342,12 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                         { id: "wallet" as const, icon: Wallet, t: "Connect a browser wallet", d: browserWallet ? "MetaMask, Rabby, Coinbase Wallet extension or another wallet" : "No browser wallet found on this device", bg: "bg-onchain-soft", off: !browserWallet },
                         { id: "email" as const, icon: Mail, t: "Coinbase Smart Wallet", d: "Email or passkey, no seed phrase. Opens keys.coinbase.com, which isn't available in every country.", bg: "bg-forest-soft", off: false },
                       ].map(({ id, icon: Icon, t, d, bg, off }) => (
-                        <button key={id} disabled={off} onClick={() => setPay(id)} className={clsx("flex items-center gap-3.5 rounded-2xl border-2 p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-50", pay === id ? "border-forest bg-forest-soft" : "border-line bg-paper")}>
+                        <button key={id} disabled={off} onClick={() => setPay(id)} className={clsx("flex items-center gap-3.5 rounded-[4px] border p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-50", pay === id ? "border-ink bg-forest-soft" : "border-line bg-paper")}>
                           <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-forest ${bg}`}><Icon size={19} /></span>
                           <span><b className="block">{t}</b><small className="text-sm text-ink-2">{d}</small></span>
                         </button>
                       ))}
-                      <button disabled className="flex cursor-not-allowed items-center gap-3.5 rounded-2xl border-2 border-line p-3.5 text-left opacity-55">
+                      <button disabled className="flex cursor-not-allowed items-center gap-3.5 rounded-[4px] border border-line p-3.5 text-left opacity-55">
                         <span className="grid h-10 w-10 place-items-center rounded-xl bg-sand"><CreditCard size={19} /></span>
                         <span><b className="block">Debit or credit card</b><small className="text-sm text-ink-2">Coming soon</small></span>
                       </button>
@@ -370,7 +370,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
                     <div key={i} className="flex justify-between gap-4 border-b border-line px-4 py-3 last:border-0"><span className="shrink-0 text-ink-2">{k}</span><span className="num text-right font-semibold">{v}</span></div>
                   ))}
                 </div>
-                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-line p-3.5 text-sm">
+                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-[4px] border border-line p-3.5 text-sm">
                   <input type="checkbox" checked={eligible} onChange={(e) => setEligible(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--color-forest)]" />
                   <span><b>I&apos;m not a US person and I&apos;m 18 or older.</b> <span className="text-ink-2">Tokenized stocks are only offered outside the United States.</span></span>
                 </label>

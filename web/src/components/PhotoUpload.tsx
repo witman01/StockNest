@@ -46,7 +46,7 @@ export function PhotoUpload({ value, onChange }: { value?: string; onChange: (da
           onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
           onDragLeave={() => setDrag(false)}
           onDrop={(e) => { e.preventDefault(); setDrag(false); handle(e.dataTransfer.files?.[0]); }}
-          className={`group relative grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-dashed transition ${drag ? "border-forest bg-forest-soft" : "border-line bg-sand hover:border-forest"}`}
+          className={`group relative grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-dashed transition ${drag ? "border-ink bg-forest-soft" : "border-line bg-sand hover:border-forest"}`}
           aria-label={value ? "Change child photo" : "Upload child photo"}
         >
           {value ? (
