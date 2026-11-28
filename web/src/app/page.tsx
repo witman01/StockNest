@@ -21,33 +21,31 @@ export default function Home() {
     <>
       {/* ---------------- HERO ---------------- */}
       <section className="mx-auto max-w-[1180px] px-4 md:px-8">
-        <div className="relative">
-          <div className="pb-2 pt-12 md:pt-16">
+        <div className="grid items-center gap-8 border-b border-line pt-10 md:pt-14 lg:min-h-[600px] lg:grid-cols-[1fr_1.08fr] lg:gap-6 lg:pt-6">
+          <div className="lg:pb-10">
             <span className="rise mono-label inline-flex items-center gap-2 border border-line px-2.5 py-1.5 text-ink-2" style={d(0)}>
               <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#548CFF] opacity-60" /><span className="relative h-2 w-2 rounded-full bg-[#1F4FD1]" /></span>
               Live on Base Sepolia
             </span>
-            <h1 className="font-display mt-6 max-w-[15ch] text-[44px] font-semibold leading-[.98] text-balance sm:text-[64px] lg:text-[88px]">
+            <h1 className="font-display mt-6 max-w-[13ch] text-[44px] font-semibold leading-[.98] text-balance sm:text-[60px] lg:text-[64px] xl:text-[76px]">
               <span className="rise inline-block" style={d(80)}>Every kid</span>{" "}
               <em className="rise inline-block" style={d(180)}>deserves</em>{" "}
               <span className="rise inline-block" style={d(280)}>a share of</span>{" "}
               <em className="rise inline-block" style={d(380)}>the future.</em>
             </h1>
-            <div className="mt-7 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-              <p className="rise max-w-[44ch] text-[15px] leading-relaxed text-ink-2" style={d(520)}>
-                Grandma picks Apple, an uncle picks NVIDIA. Each gift becomes a real tokenized share in your child&apos;s nest on Base, with their message attached.
-              </p>
-              <div className="rise flex flex-wrap gap-2.5" style={d(620)}>
-                <Button href="/create">Start a nest <span className="arr">→</span></Button>
-                <Button href="/n/amelia" variant="secondary">See an example</Button>
-              </div>
+            <p className="rise mt-6 max-w-[44ch] text-[15px] leading-relaxed text-ink-2 md:text-base" style={d(520)}>
+              Grandma picks Apple, an uncle picks NVIDIA. Each gift becomes a real tokenized share in your child&apos;s nest on Base, with their message attached.
+            </p>
+            <div className="rise mt-7 flex flex-wrap gap-2.5" style={d(620)}>
+              <Button href="/create">Start a nest <span className="arr">→</span></Button>
+              <Button href="/n/amelia" variant="secondary">See an example</Button>
             </div>
           </div>
 
           {/* the cornflower mountain, with stocks bouncing along the ridge */}
-          <div className="relative mt-4">
-            <DitherMountain className="h-[300px] w-full border-b border-line sm:h-[360px] lg:h-[440px]" />
-            <div className="pop-in absolute left-0 top-4 hidden max-w-[260px] sm:block" style={d(1500)}>
+          <div className="relative">
+            <DitherMountain className="h-[320px] w-full sm:h-[400px] lg:h-[540px]" />
+            <div className="pop-in absolute left-0 top-2 hidden max-w-[250px] sm:block" style={d(1500)}>
               <div className="float-bob border border-ink bg-paper p-3 text-[13px]">
                 <div className="flex items-center gap-2.5">
                   <StockLogo ticker="AAPL" size={34} />

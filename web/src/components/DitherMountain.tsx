@@ -34,7 +34,7 @@ export function DitherMountain({ className, chips = true }: { className?: string
     const g = c.getContext("2d")!;
     const still = !document.documentElement.classList.contains("motion");
     const t0 = performance.now();
-    let w = 0, h = 0, step = 6, raf = 0, visible = true, last = 0;
+    let w = 0, h = 0, step = 6, raf = 0, visible = true, last = 0, lastT = 0, lastP = 0;
 
     const ridge = (x: number) => { const t = x / w; return h * (0.94 - 0.8 * Math.pow(t, 1.25)) + Math.sin(t * 17) * h * 0.035 + Math.sin(t * 43) * h * 0.014; };
     const back = (x: number) => { const t = x / w; return h * (0.55 - 0.2 * Math.sin(t * 3 + 0.5)); };
@@ -85,7 +85,7 @@ export function DitherMountain({ className, chips = true }: { className?: string
         const hop = still ? 0 : Math.abs(Math.sin(t * Math.PI * chip.speed * 0.5 + chip.phase)) * Math.min(34, h * 0.09);
         const squash = still ? 1 : hop < 3 ? 0.9 : 1;
         el.style.transform = `translate(${x - el.offsetWidth / 2}px, ${ground - el.offsetHeight - 4 - hop}px) scale(${1 / squash}, ${squash})`;
-        el.style.opacity = shown ? "1" : "0";
+        el.style.opacity = shown && !(w < 640 && k % 2) ? "1" : "0"; // fewer chips when narrow
       });
     };
 
@@ -94,12 +94,14 @@ export function DitherMountain({ className, chips = true }: { className?: string
       if (!visible || now - last < 33) return; // ~30fps is plenty for dots
       last = now;
       const t = (now - t0) / 1000;
-      draw(t, Math.min(1, t / 1.6));
+      lastT = t; lastP = Math.min(1, t / 1.6);
+      draw(lastT, lastP);
     };
 
     size();
     if (still) draw(0, 1); else raf = requestAnimationFrame(frame);
-    const ro = new ResizeObserver(() => { size(); if (still) draw(0, 1); });
+    // resizing clears the canvas, so repaint the current frame straight away
+    const ro = new ResizeObserver(() => { size(); if (still) draw(0, 1); else draw(lastT, lastP); });
     ro.observe(box);
     const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; });
     io.observe(box);
@@ -112,7 +114,7 @@ export function DitherMountain({ className, chips = true }: { className?: string
     <div ref={wrap} className={`relative ${className ?? ""}`} aria-hidden="true">
       <canvas ref={canvas} className="absolute inset-0 block h-full w-full" />
       {chips && CHIPS.map((chip, k) => (
-        <div key={chip.ticker} ref={(el) => { chipEls.current[k] = el; }} className={`ridge-chip flex flex-col items-center gap-1 opacity-0 transition-opacity duration-300 ${k % 2 ? "max-sm:hidden!" : ""}`}>
+        <div key={chip.ticker} ref={(el) => { chipEls.current[k] = el; }} className={`ridge-chip flex flex-col items-center gap-1 opacity-0 transition-opacity duration-300`}>
           <span className="tag border border-ink bg-paper px-1.5 py-0.5 text-[#1F4FD1]">{chip.ticker} {chip.tag}</span>
           <StockLogo ticker={chip.ticker} size={34} className="border-ink! shadow-[0_6px_14px_rgba(31,79,209,.25)]" />
         </div>
