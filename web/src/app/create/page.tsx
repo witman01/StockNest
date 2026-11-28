@@ -29,12 +29,12 @@ function Section({ n, icon: Icon, title, sub, right, children }: { n: number; ic
   return (
     <Card className="p-5! md:p-6!">
       <div className="mb-4 flex items-start gap-3">
-        <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-forest text-white">
-          <Icon size={20} />
-          <span className="num absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-honey text-[11px] font-bold text-ink ring-2 ring-paper">{n}</span>
+        <span className="grid h-11 w-11 shrink-0 place-items-center border border-ink bg-forest-soft text-forest">
+          <Icon size={19} />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-bold leading-tight">{title}</h2>
+          <span className="mono-label text-forest">Step {String(n).padStart(2, "0")}</span>
+          <h2 className="mt-0.5 text-lg font-semibold leading-tight tracking-[-.01em]">{title}</h2>
           <p className="mt-0.5 text-sm text-ink-3">{sub}</p>
         </div>
         {right}
@@ -43,7 +43,7 @@ function Section({ n, icon: Icon, title, sub, right, children }: { n: number; ic
     </Card>
   );
 }
-const inputCls = "w-full rounded-[10px] border-2 border-line bg-paper px-3.5 py-3 text-base outline-none transition focus:border-forest";
+const inputCls = "w-full rounded-[3px] border border-[#CDD2DC] bg-paper px-3.5 py-3 text-base outline-none transition focus:border-ink focus:shadow-[0_0_0_3px_#D3E1FF]";
 
 export default function CreatePage() {
   const { toast, toastNode } = useToast();
@@ -188,7 +188,7 @@ export default function CreatePage() {
     <div className="mx-auto grid max-w-[1160px] gap-6 px-4 pb-16 pt-4 md:px-8 lg:grid-cols-[1.1fr_1fr] lg:items-start">
       <div>
         <div className="mb-5 px-1">
-          <span className="text-xs font-bold uppercase tracking-[.06em] text-forest">For parents & guardians</span>
+          <span className="mono-label text-forest">For parents & guardians</span>
           <h1 className="font-display mt-1.5 text-[32px] font-semibold leading-tight md:text-[40px]">Create a Stock Nest</h1>
           <p className="mt-2 text-ink-2">Five quick steps. We only ask for what the gift page needs: no surnames, birthdays or schools.</p>
         </div>
@@ -348,7 +348,7 @@ export default function CreatePage() {
 
       {/* live preview */}
       <div className="lg:sticky lg:top-24">
-        <p className="mb-2.5 ml-1 text-xs font-bold uppercase tracking-[.06em] text-ink-2">Live preview: what family sees</p>
+        <p className="mb-2.5 ml-1 mono-label text-ink-2">Live preview: what family sees</p>
         <div className="overflow-hidden rounded-[var(--radius-card)] bg-paper shadow-float">
           <div className="h-28 wash" />
           <div className="relative -mt-14 px-6 pb-6 text-center">
@@ -356,7 +356,7 @@ export default function CreatePage() {
             <h2 className="font-display text-[28px] font-semibold">{nestName || `${childName.trim() || "Your child"}'s Stock Nest`}</h2>
             {note && <p className="font-display mx-auto mt-2 max-w-[400px] italic text-ink-2">&ldquo;{note}&rdquo;</p>}
             {parentNames && <p className="mt-1.5 text-sm text-ink-3">from {parentNames}</p>}
-            <p className="mb-2.5 mt-5 text-xs font-bold uppercase tracking-[.06em] text-ink-3">Gift one of these stocks</p>
+            <p className="mb-2.5 mt-5 mono-label text-ink-3">Gift one of these stocks</p>
             <div className="flex flex-wrap justify-center gap-2">
               {picks.map((t) => (
                 <span key={t} className="flex items-center gap-2 rounded-full bg-sand py-1 pl-1 pr-3 text-[13px] font-semibold"><StockLogo ticker={t} size={24} />{stockBy(t).name}</span>
@@ -364,7 +364,7 @@ export default function CreatePage() {
             </div>
             {rules.opensOn && <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-honey-soft px-3 py-1 text-[13px] font-semibold"><CalendarHeart size={14} />Gifts open {fmtDay(rules.opensOn)}</div>}
             <div className="num mt-4 text-sm text-ink-3">{goalNum > 0 ? `Goal $${goalNum.toLocaleString()} in stock gifts` : "No goal set"}</div>
-            <div className="mt-4 h-[52px] rounded-full bg-forest text-base font-bold leading-[52px] text-white">🎁 Gift a Stock</div>
+            <div className="mt-4 h-[50px] bg-forest font-mono text-[13px] font-semibold uppercase leading-[50px] tracking-[.06em] text-white">Gift a stock →</div>
           </div>
         </div>
       </div>

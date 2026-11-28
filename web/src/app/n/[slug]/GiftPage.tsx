@@ -11,7 +11,7 @@ import { stockBy } from "@/lib/stocks";
 import { addressUrl, txUrl } from "@/lib/chain";
 import { shares, shortDate, usd } from "@/lib/format";
 
-const AV_COLORS = ["#0C513F", "#4E8F86", "#B7834F", "#3E5A73", "#8A948F", "#6B4226"];
+const AV_COLORS = ["#1F4FD1", "#548CFF", "#050505", "#3E5A73", "#8A8E99", "#12348F"];
 
 export function GiftPage({ nest: initial }: { nest: PublicNest }) {
   const [nest, setNest] = useState(initial);
@@ -43,7 +43,7 @@ export function GiftPage({ nest: initial }: { nest: PublicNest }) {
           </div>
 
           <div className="grid gap-2.5">
-            <Button href={`/n/${nest.slug}/gift`} block>🎁 Gift a Stock</Button>
+            <Button href={`/n/${nest.slug}/gift`} block>Gift a stock <span className="arr">→</span></Button>
             <Button variant="secondary" block onClick={share}><Share2 size={18} />Share with family</Button>
           </div>
           <p className="mt-3.5 text-[13px] text-ink-3">Values are shown at the time of each gift. Stocks can go up or down. Demo prices.</p>

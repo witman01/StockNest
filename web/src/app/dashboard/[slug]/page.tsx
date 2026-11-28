@@ -248,11 +248,11 @@ function Settings({ nest, token, toast, onSaved }: { nest: Nest; token: string |
           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-ink-2">$</span>
           <input id="goal" inputMode="numeric" placeholder="No goal" value={goal ? Number(goal).toLocaleString("en-US") : ""}
             onChange={(e) => setGoal(e.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 9))}
-            className="num w-full rounded-[10px] border-2 border-line bg-paper py-3 pl-8 pr-3.5 outline-none focus:border-forest" />
+            className="num w-full rounded-[3px] border border-[#CDD2DC] bg-paper py-3 pl-8 pr-3.5 outline-none focus:border-forest" />
         </div>
         <label className="text-sm font-semibold" htmlFor="note">Note to family</label>
         <textarea id="note" maxLength={180} value={note} onChange={(e) => setNote(e.target.value)}
-          className="font-display min-h-20 w-full rounded-[10px] border-2 border-line bg-paper px-3.5 py-3 italic outline-none focus:border-forest" />
+          className="font-display min-h-20 w-full rounded-[3px] border border-[#CDD2DC] bg-paper px-3.5 py-3 italic outline-none focus:border-forest" />
       </fieldset>
       {!readOnly && <Button block className="mt-4" onClick={save} disabled={!dirty || saving}>{saving ? "Saving…" : dirty ? "Save changes" : "Saved"}</Button>}
       {!readOnly && (

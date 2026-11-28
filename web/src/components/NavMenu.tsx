@@ -17,7 +17,7 @@ export function NavMenu() {
     <>
       <nav className="hidden items-center gap-7 text-[14px] text-ink-2 md:flex" aria-label="Main">
         {NAV.map((n) => (
-          <Link key={n.href} href={n.href} className={clsx("transition hover:text-ink", path === n.href && "text-ink")}>{n.label}</Link>
+          <Link key={n.href} href={n.href} aria-current={path === n.href ? "page" : undefined} className={clsx("nav-link transition hover:text-ink", path === n.href && "text-ink")}>{n.label}</Link>
         ))}
       </nav>
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={open ? "Close menu" : "Open menu"}

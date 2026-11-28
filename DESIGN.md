@@ -61,127 +61,53 @@ The mark is a **Forest rounded square with a cream woven nest cradling a honey "
 
 ---
 
-## 4. Color
+## 4. Color: "Paper"
 
-The brand is anchored in **Forest `#0C513F`**: deep, calm, trustworthy and growing. **Honey** brings warmth and celebration. **Base Blue** is used *only* for onchain and verification UI. There is no orange or coral in the UI.
+White paper, ink black, one cornflower accent. Chosen by the team on 2026-11-26 over the original green/honey look and a charcoal/electric-blue look.
 
-### Core tokens
 | Token | Hex | Use |
 |---|---|---|
-| `--cream` | `#FBF7F0` | App background |
-| `--paper` | `#FFFFFF` | Cards, sheets |
-| `--sand` | `#F3ECE0` | Subtle fills, segmented controls, tracks |
-| `--line` | `#E8DFD1` | Borders, hairlines |
-| `--ink` | `#1F2A2E` | Primary text |
-| `--ink-2` | `#55625F` | Secondary text |
-| `--ink-3` | `#8A948F` | Hints, placeholders |
+| Paper White | `#FFFFFF` | Page and cards |
+| Ink Black | `#050505` | Text, outlines on featured cards, primary-button hover |
+| Cornflower Blue | `#548CFF` | The accent: key words in headlines, dot art, glints |
+| Deep Cornflower | `#1F4FD1` | Primary buttons and links (passes AA on white) |
+| Cornflower soft | `#EAF1FF` | Selected tiles, quiet highlights |
+| Hairline | `#E3E6ED` | Rules, card borders |
+| Ink 2 / Ink 3 | `#4A4D55` / `#8A8E99` | Body copy / captions |
 
-### Brand tokens
-| Token | Hex | Role |
-|---|---|---|
-| `--forest` | `#0C513F` | **Primary**: buttons, logo, progress, selected states, celebration background |
-| `--forest-dark` | `#083B2E` | Hover / pressed, celebration gradient edge |
-| `--forest-soft` | `#E1EDE8` | Selected cards, tinted panels |
-| `--mint` | `#CFE6DC` | Light accents, illustration |
-| `--honey` | `#F2B34A` | Celebration, occasions, "Parents' pick" |
-| `--honey-soft` | `#FCEFD3` | Hero wash, badges |
-| `--sky` / `--sky-soft` | `#8FB8D8` / `#E4EFF7` | Info notices, illustration |
-| `--sage` | `#4E8F86` | Secondary illustration/accent |
-
-### Functional tokens
-| Token | Hex | Meaning |
-|---|---|---|
-| `--base-blue` / `--base-soft` | `#0052FF` / `#E6EEFF` | Onchain only ("Held on Base", "Receipt", "Powered by Base") |
-| `--pending` | `#9A6A12` on honey-soft | Buying / waiting |
-| `--error` / `--error-soft` | `#B3261E` / `#FBE3E1` | Failed / returned |
-
-### Stock logos
-Stocks are identified by their **real company logo** on a white circle with a `--line` border (`<StockLogo>`; files live in `web/public/logos/`, sourced from Simple Icons and colored in each brand's own color). The list matches the Coinbase tokenized stocks (B20) live on Base: Apple, NVIDIA, Microsoft, Amazon, Alphabet, Meta, Tesla and Strategy. Logos identify a stock and never imply that the company endorses StockNest. Each stock also has a fixed **chart color** for allocation bars (see `web/src/lib/stocks.ts`).
-
-### Rules
-- Forest is the **one primary action** color. Text on Forest is always white.
-- If it's blue, it's onchain. Base Blue never appears as decoration.
-- All text pairs meet WCAG AA.
-
----
+Rules: one accent only. Status colors (error `#C0261E`, pending `#8A5A00`) never double as decoration. Stock series colors stay fixed per stock.
 
 ## 5. Typography
-| Role | Font |
-|---|---|
-| Display & headings | **Fraunces** (soft serif), warm like a family album |
-| UI & body | **Plus Jakarta Sans** |
-| Numbers, shares, prices | Jakarta with `tabular-nums` |
 
-Scale (mobile → desktop): display 40→60, h1 30→40, h2 24→30, h3 18→20, body 16, small 14, micro 12 uppercase. Gift messages use **Fraunces italic**. Inputs are never smaller than 16px.
-
----
+- **Geist** for everything readable: headlines semibold with tight tracking (−0.035em), body 15–16px.
+- **Geist Mono** for labels, eyebrows, step counters and button text: 11–13px, uppercase, +0.06–0.1em tracking.
+- Headlines put the meaningful words in cornflower: "Every kid **deserves** a share of **the future.**"
 
 ## 6. Space, shape, depth
-- Spacing: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 / 96. Phone gutter is 16px.
-- Radii: 10 (inputs), 16 (small cards), 24 (cards), pill (buttons and chips).
-- Shadows are warm-tinted and soft: `--shadow-1` for cards, `--shadow-2` for floating cards.
-- Touch targets are at least 44px. The content max width is 1160px and the gift page column is 560px.
 
----
+- Square: buttons have no radius; cards 6px at most; inputs 3px. Avatars and stock logos stay round.
+- Depth comes from hairlines and ink outlines, not soft shadows. A featured card can lift with a flat offset shadow in cornflower soft (`8px 8px 0 #D3E1FF`).
+- Framed hero with "+" corner marks, like a technical drawing.
 
 ## 7. Components
 
-**Buttons:** Primary (Forest fill, pill, 52px), Secondary (Forest outline), Ghost (Forest text). Disabled uses sand with a visible reason.
+- **Buttons:** primary = deep cornflower fill, turns ink on hover; secondary = ink outline on white. Mono uppercase label; a trailing → nudges right on hover.
+- **Cards:** white, 1px hairline. Featured cards use a 1px ink border.
+- **Inputs:** 1px border, focus = ink border + soft cornflower ring.
+- **Step labels:** "STEP 01" in mono cornflower above the section title.
+- **Nav:** plain links; an ink underline grows in on hover and marks the current page. Phones get a full-width drop-down.
 
-**Stock card (picker):** a tile with the name, ticker and price (labelled "demo price" in the mockup). The selected card has a Forest border on forest-soft, and parent-curated stocks get a "Parents' pick" honey badge. In "Gift stock I own" mode, stocks the giver doesn't hold are disabled and held ones show "✓ eligible".
+## 8. Illustration: the cornflower mountain
 
-**Segmented control:** *Buy with USDC* | *Gift stock I own*.
-
-**Share estimate panel:** a stock tile with "≈ 0.2189 shares of Apple at $228.40" and the note "fractional shares supported".
-
-**Holdings row:** a tile with the name, shares and number of gifts on the left, and the **value at time of gift** on the right. We don't show live P&L in the MVP.
-
-**Allocation bar:** a stacked pill bar with segments in the stock tile colors.
-
-**Nest progress ring:** total value gifted against the optional goal, labelled "gifted in stocks so far".
-
-**Gift timeline item:** avatar, name, occasion chip, "gifted **0.44 Apple (AAPL)** · $100", the message in Fraunces italic, the date, and a Base Receipt chip.
-
-**Status chips (stock gifts):**
-| Status | Style |
-|---|---|
-| USDC received | sand |
-| Buying stock | pending (honey) |
-| Delivered | forest |
-| Returned / Refunded | error |
-| Failed | error |
-
-### 7.1 Celebration screen (signature moment)
-A full-screen overlay that pops in after **creating a nest** and after **sending a stock gift**.
-- **Background:** Forest radial gradient (`#17705A` → `#0C513F` → `#083B2E`).
-- **Confetti** falls across the whole screen, *over* the cards, in honey, white, sky, mint, sage and pale gold. It plays for about 4s and is skipped under `prefers-reduced-motion`.
-- **A stack of white rounded cards:**
-  1. Logo card (StockNest mark and wordmark).
-  2. Main card with a three-step check stepper (Forest circles, white checks, connecting line), a large Fraunces headline, a subtitle, an extra block, the line "Help spread the word…", a primary **Share link** button and a ghost secondary link.
-  3. A "Powered by **Base**" card.
-- **Footer line:** a 🔒 icon and "Secured onchain" in light text.
-
-| Variant | Stepper | Headline | Extra block |
-|---|---|---|---|
-| Nest created | Details · Stocks · Share | "Your nest is ready." | Copyable nest link |
-| Gift sent (buy) | Stock · Note · Gift | "Give today. Grow tomorrow." | Live tracker: USDC received ✓ → {Stock} purchased ✓ → Delivered to nest ✓, plus a receipt chip |
-| Gift sent (direct) | Stock · Note · Gift | same | Eligibility checked ✓ → Shares sent ✓ → Delivered ✓ |
-
-The tracker ticks only as each state is confirmed. Never jump straight to "Delivered".
-
----
-
-## 8. Illustration: the StockNest family
-Flat vector shapes with soft rounded geometry and no outlines, except thin ink lines for faces. Faces use dot eyes, a small smile and soft blush.
-
-- **Palette:** Forest, mint, honey, sage, sky and warm neutrals. No orange or coral.
-- **Cast** (reused for continuity): **Amelia** (5) with curly puffs and a sky dress, holding a **Forest gift box with a honey ribbon**. **Dad** in a Forest sweater. **Mum** in a honey top. **Grandma** with a grey bun, glasses and a mint cardigan, holding a stock gift card. **Grandpa** with a flat cap, white moustache, slate cardigan and walking cane. **Cousin Zara** (teen) with long braids and a mustard hoodie, sending a share from her phone. **Uncle James** with a beard and a sage shirt, waving from afar. **Biscuit**, the family dog.
-- **Idle animation** (CSS only, in `globals.css`): characters breathe at offset rhythms, everyone blinks, the uncle waves, the dog wags its tail, shares fly from Zara's phone, hearts and shares drift upward, the sprout grows on load, and sparkles twinkle. All of it stops under `prefers-reduced-motion`. Source: `web/src/components/FamilyScene.tsx`.
-- **Props:** the **share symbol** (a honey pie with a Forest slice lifted out, meaning "a piece of a company"), a sprout growing from a woven nest, honey hearts and sparkles.
-- **Don'ts:** rockets, "to the moon", piles of cash, red/green trading candles, photoreal children, company logos.
+The hero art is a dithered dot "mountain" whose ridge climbs like a long-run stock chart (`DitherMountain`). Dots are cornflower, pale cornflower and paper-grey. Child avatars stay as friendly illustrations.
 
 ## 9. Motion
-200–300ms, `cubic-bezier(.2,.8,.2,1)`. The progress ring animates in on first view. The celebration card rises with a gentle scale, the confetti falls once, and the tracker steps tick about 0.7s apart. All motion respects reduced-motion settings.
+
+Motion should feel like a live market, calm and precise, never bouncy-cartoon.
+- **Hero:** the headline rises word by word; the mountain plots in from left to right with an ink "plot head"; then its columns keep rising and falling like live prices while stock logos (TSLA, MSFT, AAPL, NVDA, AMZN) bounce along the ridge. Gift cards pop in and float gently.
+- **Scroll:** sections fade up as they enter; allocation bars grow in; dollar totals count up.
+- **Hover:** arrows nudge, step cells get a cornflower rule sweeping across, the featured nest card lifts.
+- Everything is visible at rest without JS. `prefers-reduced-motion` gets a still mountain and no reveals.
 
 ## 10. Voice & copy
 | Say | Don't say |

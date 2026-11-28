@@ -1,73 +1,50 @@
 @import "tailwindcss";
 
+/* StockNest "Paper": white paper, ink black, cornflower blue. Square edges, hairline rules,
+   mono labels, one accent. Token names are kept from v1 (forest = primary action, honey = accent). */
 @theme {
-  --color-cream: #FBF7F0;
-  --color-paper: #FFFFFF;
-  --color-sand: #F3ECE0;
-  --color-line: #E8DFD1;
-  --color-ink: #1F2A2E;
-  --color-ink-2: #55625F;
-  --color-ink-3: #8A948F;
-  --color-forest: #0C513F;
-  --color-forest-dark: #083B2E;
-  --color-forest-soft: #E1EDE8;
-  --color-mint: #CFE6DC;
-  --color-honey: #F2B34A;
-  --color-honey-soft: #FCEFD3;
-  --color-sky: #8FB8D8;
-  --color-sky-soft: #E4EFF7;
-  --color-sage: #4E8F86;
-  --color-onchain: #0052FF;
-  --color-onchain-soft: #E6EEFF;
-  --color-pending: #9A6A12;
-  --color-error: #B3261E;
-  --color-error-soft: #FBE3E1;
+  --color-cream: #FFFFFF;        /* page */
+  --color-paper: #FFFFFF;        /* cards */
+  --color-sand: #F2F4F8;         /* quiet fills */
+  --color-line: #E3E6ED;         /* hairlines */
+  --color-ink: #050505;
+  --color-ink-2: #4A4D55;
+  --color-ink-3: #8A8E99;
+  --color-forest: #1F4FD1;       /* primary action (deep cornflower, AA on white) */
+  --color-forest-dark: #050505;  /* primary hover */
+  --color-forest-soft: #EAF1FF;
+  --color-mint: #D3E1FF;
+  --color-honey: #548CFF;        /* cornflower accent */
+  --color-honey-soft: #EEF3FF;
+  --color-sky: #8FB2FF;
+  --color-sky-soft: #EEF3FF;
+  --color-sage: #548CFF;
+  --color-onchain: #1F4FD1;
+  --color-onchain-soft: #EAF1FF;
+  --color-pending: #8A5A00;
+  --color-error: #C0261E;
+  --color-error-soft: #FDE7E5;
 
-  --shadow-soft: 0 1px 2px rgba(40, 40, 20, .06), 0 2px 8px rgba(40, 40, 20, .05);
-  --shadow-float: 0 4px 12px rgba(40, 40, 20, .08), 0 16px 40px rgba(40, 40, 20, .10);
-  --shadow-cta: 0 6px 16px rgba(12, 81, 63, .28);
+  --shadow-soft: 0 0 0 1px #E3E6ED;
+  --shadow-float: 0 0 0 1px #E3E6ED, 0 18px 40px rgba(5, 5, 5, .08);
+  --shadow-cta: none;
 
-  --radius-card: 24px;
+  --radius-card: 6px;
+  --radius-sm: 2px; --radius-md: 3px; --radius-lg: 4px; --radius-xl: 4px; --radius-2xl: 6px; --radius-3xl: 8px;
   --ease-nest: cubic-bezier(.2, .8, .2, 1);
+  --ease-out-expo: cubic-bezier(.16, 1, .3, 1);
+
+  --font-display: var(--font-geist), system-ui, sans-serif;
+  --font-sans: var(--font-geist), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, Menlo, monospace;
 }
 
-@theme {
-  --font-display: var(--font-fraunces), Georgia, serif;
-  --font-sans: var(--font-jakarta), system-ui, sans-serif;
-}
-
-/* ---------- themes ----------
-   Light values mirror @theme. Re-declaring them under [data-theme="light"]
-   lets a subtree (e.g. the celebration cards) stay light inside dark mode. */
-:root, [data-theme="light"] {
-  --color-cream: #FBF7F0; --color-paper: #FFFFFF; --color-sand: #F3ECE0; --color-line: #E8DFD1;
-  --color-ink: #1F2A2E; --color-ink-2: #55625F; --color-ink-3: #8A948F;
-  --color-forest-soft: #E1EDE8; --color-mint: #CFE6DC;
-  --color-honey-soft: #FCEFD3; --color-sky-soft: #E4EFF7;
-  --color-onchain: #0052FF; --color-onchain-soft: #E6EEFF;
-  --color-pending: #9A6A12; --color-error: #B3261E; --color-error-soft: #FBE3E1;
-  --forest-text: #0C513F; --honey-ink: #7a5413;
+:root {
+  --forest-text: #1F4FD1; --honey-ink: #1F4FD1; --cornflower: #548CFF;
   --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
-  --series-5: #e87ba4; --series-6: #008300; --series-7: #6250d6; --series-8: #e34948; --series-other: #8A948F;
-  --wash-a: #F8DFAE; --wash-b: #CFE6DC; --wash-bg: #FCEFD3;
-  --shadow-soft: 0 1px 2px rgba(40,40,20,.06), 0 2px 8px rgba(40,40,20,.05);
-  --shadow-float: 0 4px 12px rgba(40,40,20,.08), 0 16px 40px rgba(40,40,20,.10);
+  --series-5: #e87ba4; --series-6: #008300; --series-7: #6250d6; --series-8: #e34948; --series-other: #8A8E99;
+  --wash-a: #DCE7FF; --wash-b: #EEF3FF; --wash-bg: #F6F8FC;
   color-scheme: light;
-}
-[data-theme="dark"] {
-  --color-cream: #0A0A0A; --color-paper: #151515; --color-sand: #1F1F1F; --color-line: #2B2B2B;
-  --color-ink: #F4F1EA; --color-ink-2: #B5BAB6; --color-ink-3: #80877F;
-  --color-forest-soft: #0E2A22; --color-mint: #173A30;
-  --color-honey-soft: #2A2213; --color-sky-soft: #142029;
-  --color-onchain: #5B92FF; --color-onchain-soft: #0F1B33;
-  --color-pending: #F2C46B; --color-error: #FF8A80; --color-error-soft: #2C1513;
-  --forest-text: #45C597; --honey-ink: #F2C46B;
-  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
-  --series-5: #d55181; --series-6: #0ca30c; --series-7: #9085e9; --series-8: #e66767; --series-other: #6f756f;
-  --wash-a: #3A2D12; --wash-b: #0F3A2E; --wash-bg: #17140D;
-  --shadow-soft: 0 0 0 1px rgba(255,255,255,.06), 0 2px 10px rgba(0,0,0,.5);
-  --shadow-float: 0 0 0 1px rgba(255,255,255,.08), 0 18px 44px rgba(0,0,0,.6);
-  color-scheme: dark;
 }
 .text-forest { color: var(--forest-text); }
 .border-forest { border-color: var(--forest-text); }
@@ -79,58 +56,61 @@
 }
 body {
   background: var(--color-cream);
-  transition: background-color .3s ease, color .3s ease;
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
+::selection { background: #D3E1FF; color: #050505; }
+:focus-visible { outline: 2px solid var(--cornflower); outline-offset: 2px; }
 
 .num { font-variant-numeric: tabular-nums; }
-.font-display { letter-spacing: -0.015em; }
+.font-display { letter-spacing: -0.035em; }
+h1.font-display em, h2.font-display em, .accent em { font-style: normal; color: var(--cornflower); }
+.mono-label { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
 
-/* ---------- family scene animation ---------- */
-.fs-breathe { animation: fs-breathe 4.8s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
-@keyframes fs-breathe { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-3px) } }
+/* ---------- buttons: arrow nudges, nav underline grows ---------- */
+.btn .arr { display: inline-block; transition: transform .25s var(--ease-out-expo); }
+.btn:hover .arr { transform: translateX(4px); }
+.nav-link { position: relative; }
+.nav-link::after { content: ""; position: absolute; left: 0; right: 0; bottom: -6px; height: 1px; background: var(--color-ink); transform: scaleX(0); transform-origin: left; transition: transform .3s var(--ease-out-expo); }
+.nav-link:hover::after, .nav-link[aria-current="page"]::after { transform: scaleX(1); }
 
-.fs-hop { animation: fs-hop 3.2s var(--ease-nest) infinite; transform-box: fill-box; transform-origin: 50% 100%; }
-@keyframes fs-hop { 0%,70%,100% { transform: translateY(0) } 78% { transform: translateY(-9px) } 86% { transform: translateY(0) } 90% { transform: translateY(-3px) } }
+/* ---------- hero entrance (plays once; resting state is fully visible) ---------- */
+.rise { animation: rise .9s var(--ease-out-expo) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(.45em); filter: blur(6px) } to { opacity: 1; transform: none; filter: none } }
+.pop-in { animation: pop-in .7s var(--ease-out-expo) both; }
+@keyframes pop-in { from { opacity: 0; transform: translateY(14px) scale(.97) } to { opacity: 1; transform: none } }
+.float-bob { animation: float-bob 5.5s ease-in-out infinite; }
+@keyframes float-bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
+.blink-cursor { animation: blink-cursor 1.1s steps(1) infinite; }
+@keyframes blink-cursor { 50% { opacity: 0 } }
 
-.fs-wave { animation: fs-wave 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 0% 100%; }
-@keyframes fs-wave { 0%,100% { transform: rotate(-8deg) } 50% { transform: rotate(14deg) } }
+/* ---------- scroll reveals: only hidden when JS + motion are on, so the page is complete at rest ---------- */
+.motion .reveal { opacity: 0; transform: translateY(18px); transition: opacity .8s var(--ease-out-expo), transform .8s var(--ease-out-expo); transition-delay: var(--d, 0ms); }
+.motion .reveal.in { opacity: 1; transform: none; }
+.motion .reveal .grow-x { transform: scaleX(0); transform-origin: left; transition: transform 1.1s var(--ease-out-expo) .25s; }
+.motion .reveal.in .grow-x { transform: scaleX(1); }
 
-.fs-wag { animation: fs-wag .5s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 100% 100%; }
-@keyframes fs-wag { from { transform: rotate(-18deg) } to { transform: rotate(16deg) } }
+/* step cells: a cornflower rule sweeps in on hover */
+.step-cell { position: relative; }
+.step-cell::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--cornflower); transform: scaleX(0); transform-origin: left; transition: transform .45s var(--ease-out-expo); }
+.step-cell:hover::before { transform: scaleX(1); }
 
-.fs-blink { animation: fs-blink 5s infinite; transform-box: fill-box; transform-origin: 50% 50%; }
-@keyframes fs-blink { 0%,94%,100% { transform: scaleY(1) } 96% { transform: scaleY(.1) } }
-
-.fs-grow { animation: fs-grow 1.6s var(--ease-nest) both .3s; transform-box: fill-box; transform-origin: 50% 100%; }
-@keyframes fs-grow { from { transform: scale(.2); opacity: 0 } to { transform: scale(1); opacity: 1 } }
-
-.fs-rise { animation: fs-rise 7s ease-in infinite; transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; }
-@keyframes fs-rise { 0% { transform: translateY(0) scale(.6); opacity: 0 } 12% { opacity: 1 } 80% { opacity: .9 } 100% { transform: translateY(-240px) scale(1.05); opacity: 0 } }
-
-.fs-twinkle { animation: fs-twinkle 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 50%; }
-@keyframes fs-twinkle { 0%,100% { transform: scale(.6) rotate(0); opacity: .5 } 50% { transform: scale(1.1) rotate(20deg); opacity: 1 } }
-
-.fs-send { animation: fs-send 3.4s ease-out infinite; transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; }
-@keyframes fs-send { 0% { transform: translate(0,0) scale(.4); opacity: 0 } 15% { opacity: 1 } 100% { transform: translate(-120px,-150px) scale(1); opacity: 0 } }
-
-.fs-sun { animation: fs-sun 12s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 50%; }
-@keyframes fs-sun { 0%,100% { transform: scale(1) } 50% { transform: scale(1.06) } }
-
-.float-bob { animation: float-bob 6s ease-in-out infinite; }
-@keyframes float-bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-7px) } }
-
-.marquee { animation: marquee 32s linear infinite; }
+/* ticker row */
+.marquee { animation: marquee 36s linear infinite; }
+.marquee:hover { animation-play-state: paused; }
 @keyframes marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
-  .fs-rise, .fs-send, .fs-drop { opacity: 0 !important; }
-  .fs-catch { animation: none; }
-}
+/* bouncing stock chips on the hero ridge (positions set per frame in JS) */
+.ridge-chip { position: absolute; left: 0; top: 0; will-change: transform; pointer-events: none; }
+.ridge-chip .tag { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: .06em; }
+
+/* ---------- avatar + nest page details ---------- */
+.fs-blink { animation: fs-blink 5s infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+@keyframes fs-blink { 0%,94%,100% { transform: scaleY(1) } 96% { transform: scaleY(.1) } }
+.fs-twinkle { animation: fs-twinkle 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+@keyframes fs-twinkle { 0%,100% { transform: scale(.6) rotate(0); opacity: .5 } 50% { transform: scale(1.1) rotate(20deg); opacity: 1 } }
 
 /* ---------- celebration ---------- */
 .cel-in { animation: cel-in .35s ease-out both; }
@@ -140,126 +120,28 @@ body {
 .cel-step { animation: cel-step .5s cubic-bezier(.34,1.56,.64,1) both; }
 @keyframes cel-step { from { opacity: 0; transform: scale(.4) } to { opacity: 1; transform: scale(1) } }
 
-/* ---------- Amelia's walk (and Biscuit tagging along) ---------- */
-.amelia-walk { animation: amelia-walk 16s ease-in-out infinite; }
-@keyframes amelia-walk { 0%, 8% { transform: translateX(0) } 44%, 56% { transform: translateX(300px) } 92%, 100% { transform: translateX(0) } }
-/* stocks dropping into Amelia's gift box */
-.fs-drop { animation: fs-drop 5.25s cubic-bezier(.5,0,.75,.4) infinite; transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; }
-@keyframes fs-drop {
-  0% { transform: translateY(-170px) rotate(-30deg) scale(.9); opacity: 0 }
-  4% { opacity: 1 }
-  13% { transform: translateY(0) rotate(10deg) scale(1); opacity: 1 }
-  17% { transform: translateY(16px) rotate(0) scale(.8); opacity: 0 }
-  100% { transform: translateY(16px); opacity: 0 }
-}
-.fs-catch { animation: fs-catch .75s ease-out infinite .62s; transform-box: fill-box; transform-origin: 50% 100%; }
-@keyframes fs-catch { 0%, 100% { transform: scale(1, 1) } 12% { transform: scale(1.04, .95) } 30% { transform: scale(.99, 1.02) } 50% { transform: scale(1, 1) } }
-.walk-bob { animation: walk-bob .45s ease-in-out infinite alternate; }
-@keyframes walk-bob { from { transform: translateY(0) } to { transform: translateY(-3.5px) } }
-.leg-a, .leg-b { animation: leg-swing .45s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 0; }
-.leg-b { animation-delay: -.45s; }
-@keyframes leg-swing { from { transform: rotate(16deg) } to { transform: rotate(-16deg) } }
-.dog-walk { animation: dog-walk 16s ease-in-out infinite .6s; }
-@keyframes dog-walk { 0%, 8% { transform: translateX(0) } 44%, 56% { transform: translateX(185px) } 92%, 100% { transform: translateX(0) } }
-.dog-face { animation: dog-face 16s linear infinite .6s; transform-box: fill-box; transform-origin: 50% 50%; }
-@keyframes dog-face { 0%, 55% { transform: scaleX(1) } 57%, 91% { transform: scaleX(-1) } 93%, 100% { transform: scaleX(1) } }
-.dog-leg { animation: leg-swing .3s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 0; }
-.dog-leg.b { animation-delay: -.3s; }
-
-/* ---------- dynamic island ---------- */
-.island-sheen {
-  padding: 1.5px; opacity: .85;
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
-  background: conic-gradient(from var(--a, 0deg), transparent 0 70%, rgba(242,179,74,.55), rgba(69,197,151,.55), transparent 95%); animation: island-spin 6s linear infinite; }
+/* ---------- live edge: a cornflower glint travels round the gift card ---------- */
 @property --a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 @keyframes island-spin { to { --a: 360deg } }
-.roll-col { transition: transform .6s var(--ease-nest); }
-
-/* ---------- rotating hero headline ---------- */
-.hl-word { display: inline-block; white-space: nowrap; }
-.hl-in { animation: hl-in .3s cubic-bezier(.34,1.56,.64,1) both; }
-@keyframes hl-in { from { opacity: 0; transform: translateY(.45em) scale(.7); filter: blur(8px) } to { opacity: 1; transform: none; filter: blur(0) } }
-.hl-out { animation: hl-out .18s ease-in both; }
-@keyframes hl-out { from { opacity: 1; transform: none; filter: blur(0) } to { opacity: 0; transform: translateY(-.35em) scale(.92); filter: blur(6px) } }
-
-/* ---------- liquid edge (same rolling light as the island) ---------- */
 .liquid { isolation: isolate; }
 .liquid:not(.absolute):not(.fixed) { position: relative; }
 .liquid::before, .liquid::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
 .liquid::before {
   padding: 1.5px; z-index: 1;
-  background: conic-gradient(from var(--a, 0deg), transparent 0 62%, var(--liquid-a, rgba(242,179,74,.75)), var(--liquid-b, rgba(69,197,151,.75)), transparent 90%);
+  background: conic-gradient(from var(--a, 0deg), transparent 0 70%, rgba(84,140,255,.9), rgba(31,79,209,.9), transparent 92%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
   animation: island-spin 6s linear infinite;
 }
-.liquid::after { box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
-[data-theme="dark"] .liquid::after { box-shadow: inset 0 0 0 1px rgba(255,255,255,.09); }
+.liquid::after { box-shadow: inset 0 0 0 1px #E3E6ED; }
 
-/* ---------- simple entrances (CSS, so they never get stuck hidden) ---------- */
-.fade-up { animation: fade-up .45s var(--ease-nest) both; }
+/* ---------- simple entrances ---------- */
+.fade-up { animation: fade-up .5s var(--ease-out-expo) both; }
 @keyframes fade-up { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
-.step-in { animation: step-in .25s var(--ease-nest) both; }
+.step-in { animation: step-in .3s var(--ease-out-expo) both; }
 @keyframes step-in { from { opacity: 0; transform: translateX(16px) } to { opacity: 1; transform: none } }
 
-
-/* =====================================================================
-   Looks: the original design plus two alternatives friends can vote on.
-   <html data-look="original|paper|charcoal"> (set before paint, see layout).
-   ===================================================================== */
-.only-paper, .only-charcoal { display: none; }
-.only-original { display: contents; }
-html[data-look="paper"] .only-original, html[data-look="charcoal"] .only-original { display: none; }
-html[data-look="paper"] .only-paper, html[data-look="charcoal"] .only-charcoal { display: contents; }
-
-html[data-look="paper"], html[data-look="paper"] [data-theme] {
-  --color-cream: #FFFFFF; --color-paper: #FFFFFF; --color-sand: #F2F4F8; --color-line: #E3E6ED;
-  --color-ink: #050505; --color-ink-2: #4A4D55; --color-ink-3: #8A8E99;
-  --color-forest: #1F4FD1; --color-forest-dark: #050505; --color-forest-soft: #EAF1FF; --color-mint: #D3E1FF;
-  --color-honey: #548CFF; --color-honey-soft: #EEF3FF; --color-sky: #8FB2FF; --color-sky-soft: #EEF3FF; --color-sage: #548CFF;
-  --color-onchain: #1F4FD1; --color-onchain-soft: #EAF1FF;
-  --color-pending: #8A5A00; --color-error: #C0261E; --color-error-soft: #FDE7E5;
-  --forest-text: #1F4FD1; --honey-ink: #1F4FD1;
-  --wash-a: #DCE7FF; --wash-b: #EEF3FF; --wash-bg: #F6F8FC;
-  --shadow-soft: 0 0 0 1px #E3E6ED; --shadow-float: 0 0 0 1px #E3E6ED, 0 18px 40px rgba(5,5,5,.08); --shadow-cta: none;
-  --celebrate-bg: radial-gradient(120% 80% at 50% 0%, #3D6FEA 0%, #1F4FD1 55%, #12348F 100%); --liquid-a: rgba(84,140,255,.9); --liquid-b: rgba(31,79,209,.9);
-  --radius-card: 6px; --radius-sm: 2px; --radius-md: 3px; --radius-lg: 4px; --radius-xl: 4px; --radius-2xl: 6px; --radius-3xl: 8px;
-  --font-display: var(--font-geist), system-ui, sans-serif; --font-sans: var(--font-geist), system-ui, sans-serif; --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  color-scheme: light;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .motion .reveal { opacity: 1; transform: none; }
 }
-html[data-look="charcoal"], html[data-look="charcoal"] [data-theme] {
-  --color-cream: #1E1E1C; --color-paper: #262624; --color-sand: #32312D; --color-line: #3A3934;
-  --color-ink: #F4EEE2; --color-ink-2: #D8CBB3; --color-ink-3: #A79C88;
-  --color-forest: #2F6BFF; --color-forest-dark: #4A80FF; --color-forest-soft: #1A2440; --color-mint: #22305A;
-  --color-honey: #D8CBB3; --color-honey-soft: #34302A; --color-sky: #8FB0FF; --color-sky-soft: #1E2638; --color-sage: #8FB0FF;
-  --color-onchain: #6F98FF; --color-onchain-soft: #1A2440;
-  --color-pending: #E9C987; --color-error: #FF8A80; --color-error-soft: #3A1E1B;
-  --forest-text: #8FB0FF; --honey-ink: #E9DCC3;
-  --wash-a: #3A3426; --wash-b: #1C2A4A; --wash-bg: #2A2925;
-  --shadow-soft: 0 0 0 1px #3A3934; --shadow-float: 0 0 0 1px #3A3934, 0 20px 44px rgba(0,0,0,.55); --shadow-cta: 0 6px 18px rgba(47,107,255,.35);
-  --celebrate-bg: radial-gradient(120% 80% at 50% 0%, #2B2B28 0%, #1E1E1C 60%, #141413 100%); --liquid-a: rgba(216,203,179,.6); --liquid-b: rgba(47,107,255,.9);
-  --radius-card: 14px; --radius-xl: 10px; --radius-2xl: 12px; --radius-3xl: 16px;
-  --font-display: var(--font-inter-tight), system-ui, sans-serif; --font-sans: var(--font-inter-tight), system-ui, sans-serif; --font-serif: var(--font-instrument), Georgia, serif;
-  color-scheme: dark;
-}
-
-/* paper: square, mono-labelled buttons; flat outlined cards; cornflower accents in headings */
-html[data-look="paper"] .btn { border-radius: 0; font-family: var(--font-mono); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-html[data-look="paper"] .btn-md { height: 50px; padding-inline: 24px; font-size: 13px; }
-html[data-look="paper"] .btn-sm { height: 40px; padding-inline: 16px; font-size: 12px; }
-html[data-look="paper"] .btn-secondary { border-width: 1px; border-color: var(--color-ink); background: var(--color-paper); color: var(--color-ink); }
-html[data-look="paper"] .card, html[data-look="charcoal"] .card { box-shadow: none; border: 1px solid var(--color-line); }
-html[data-look="paper"] .font-display { letter-spacing: -0.035em; }
-html[data-look="paper"] h1.font-display em, html[data-look="paper"] h2.font-display em { font-style: normal; color: #548CFF; }
-html[data-look="paper"] .liquid::after { box-shadow: inset 0 0 0 1px #E3E6ED; }
-.mono-label { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
-
-/* charcoal: soft-square buttons, serif italics inside headings */
-html[data-look="charcoal"] .btn { border-radius: 8px; font-weight: 600; }
-html[data-look="charcoal"] .btn-secondary { border-width: 1px; border-color: var(--color-line); color: var(--color-ink); }
-html[data-look="charcoal"] .font-display { letter-spacing: -0.03em; }
-html[data-look="charcoal"] h1 em, html[data-look="charcoal"] h2 em, html[data-look="charcoal"] h3 em { font-family: var(--font-serif); font-weight: 400; font-style: italic; letter-spacing: -0.01em; }
-html[data-look="charcoal"] .liquid::after { box-shadow: inset 0 0 0 1px rgba(216,203,179,.14); }
-.eyebrow-line { display: inline-flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--color-ink-3); }
-.eyebrow-line::before { content: ""; width: 22px; height: 1px; background: currentColor; }

@@ -4,6 +4,7 @@ import { ArrowRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ChildAvatar } from "@/components/ChildAvatar";
+import { DitherMountain } from "@/components/DitherMountain";
 import { StockLogo } from "@/components/StockLogo";
 import { AllocationBar, Button, Card, Chip, StatusChip, shareLink, useToast } from "@/components/ui";
 import { fetchMyNests, getOwned } from "@/lib/api";
@@ -35,11 +36,14 @@ export default function Dashboard() {
   const { nests } = state;
   if (nests.length === 0) {
     return (
-      <div className="mx-auto max-w-[520px] px-4 py-20 text-center">
-        <span className="text-xs font-bold uppercase tracking-[.06em] text-ink-2">Parent dashboard</span>
-        <h1 className="font-display mt-2 text-3xl font-semibold">No nests yet</h1>
-        <p className="mt-3 text-ink-2">Create a Stock Nest for your child and it will appear here, with every gift and giver. Nests you created on another device open there.</p>
-        <div className="mt-6 flex justify-center"><Button href="/create"><Plus size={18} />Create a Stock Nest</Button></div>
+      <div className="mx-auto max-w-[1180px] px-4 md:px-8">
+        <div className="fade-up mx-auto max-w-[520px] pb-10 pt-20 text-center">
+          <span className="mono-label text-forest">Parent dashboard</span>
+          <h1 className="font-display mt-2 text-3xl font-semibold">No nests yet</h1>
+          <p className="mt-3 text-ink-2">Create a Stock Nest for your child and it will appear here, with every gift and giver. Nests you created on another device open there.</p>
+          <div className="mt-6 flex justify-center"><Button href="/create"><Plus size={16} />Create a Stock Nest</Button></div>
+        </div>
+        <DitherMountain className="h-[180px] w-full border-b border-line sm:h-[220px]" chips={false} />
       </div>
     );
   }
@@ -52,7 +56,7 @@ export default function Dashboard() {
     <div className="mx-auto max-w-[1160px] px-4 pb-16 pt-4 md:px-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <span className="text-xs font-bold uppercase tracking-[.06em] text-ink-2">Parent dashboard</span>
+          <span className="mono-label text-ink-2">Parent dashboard</span>
           <h1 className="font-display mt-1 text-[30px] font-semibold md:text-[40px]">Your family&apos;s nests 👋</h1>
         </div>
         <Button href="/create" size="sm"><Plus size={18} />New Stock Nest</Button>

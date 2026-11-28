@@ -17,11 +17,11 @@ type BtnProps = {
 
 export function Button({ variant = "primary", size = "md", block, href, className, children, ...rest }: BtnProps) {
   const cls = clsx(
-    "btn inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-bold transition duration-200 ease-[var(--ease-nest)] active:scale-[.98] disabled:cursor-not-allowed disabled:bg-sand disabled:text-ink-3 disabled:shadow-none",
-    size === "md" ? "btn-md h-[52px] px-7 text-base" : "btn-sm h-[42px] px-[18px] text-[15px]",
-    variant === "primary" && "bg-forest text-white shadow-cta hover:bg-forest-dark",
-    variant === "secondary" && "btn-secondary border-2 border-forest text-forest hover:bg-forest-soft",
-    variant === "ghost" && "h-11 px-2 text-forest hover:underline",
+    "btn inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none font-mono font-semibold uppercase tracking-[.06em] transition duration-200 ease-[var(--ease-nest)] active:translate-y-px disabled:cursor-not-allowed disabled:border-line disabled:bg-sand disabled:text-ink-3",
+    size === "md" ? "h-[50px] px-6 text-[13px]" : "h-[40px] px-4 text-[12px]",
+    variant === "primary" && "border border-forest bg-forest text-white hover:border-ink hover:bg-ink",
+    variant === "secondary" && "border border-ink bg-paper text-ink hover:bg-forest-soft",
+    variant === "ghost" && "h-11! border-0 px-2! text-forest hover:underline",
     block && "w-full",
     className,
   );
@@ -30,7 +30,7 @@ export function Button({ variant = "primary", size = "md", block, href, classNam
 }
 
 export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={clsx("card rounded-[var(--radius-card)] bg-paper p-6 shadow-soft", className)}>{children}</div>;
+  return <div className={clsx("rounded-[var(--radius-card)] border border-line bg-paper p-6", className)}>{children}</div>;
 }
 
 const chipTones = {
@@ -114,7 +114,7 @@ export function SeriesDot({ ticker }: { ticker: string }) {
 export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)}
-      className={clsx("relative h-7 w-12 shrink-0 rounded-full transition-colors", on ? "bg-forest" : "bg-[#d7cdbd]")}>
+      className={clsx("relative h-7 w-12 shrink-0 rounded-full transition-colors", on ? "bg-forest" : "bg-line")}>
       <span className={clsx("absolute top-[3px] h-[22px] w-[22px] rounded-full bg-white shadow-soft transition-all duration-200", on ? "left-[23px]" : "left-[3px]")} />
     </button>
   );

@@ -87,14 +87,14 @@ export function DatePicker({ value, onChange, label = "Gifts open on" }: { value
 
       {chooser ? (
         <div className="mt-2">
-          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-3">Year</p>
+          <p className="mb-1.5 mono-label text-ink-3">Year</p>
           <div className="grid max-h-[124px] grid-cols-5 gap-1.5 overflow-y-auto pr-1">
             {years.map((y) => (
               <button key={y} type="button" onClick={() => setView((v) => ({ y, m: y === minY && v.m < minM ? minM : v.m }))} aria-pressed={view.y === y}
                 className={clsx("num h-9 rounded-xl text-[14px] font-semibold transition", view.y === y ? "bg-forest text-white" : "bg-sand text-ink hover:bg-forest-soft")}>{y}</button>
             ))}
           </div>
-          <p className="mb-1.5 mt-3 text-[11px] font-bold uppercase tracking-wide text-ink-3">Month</p>
+          <p className="mb-1.5 mt-3 mono-label text-ink-3">Month</p>
           <div className="grid grid-cols-4 gap-1.5">
             {Array.from({ length: 12 }, (_, m) => {
               const off = view.y === minY && m < minM;
@@ -108,7 +108,7 @@ export function DatePicker({ value, onChange, label = "Gifts open on" }: { value
         </div>
       ) : (<>
 
-      <div className="mt-2 grid grid-cols-7 text-center text-[11px] font-bold uppercase tracking-wide text-ink-3">
+      <div className="mt-2 grid grid-cols-7 text-center mono-label text-ink-3">
         {WEEKDAYS.map((w) => <span key={w} className="py-1">{w}</span>)}
       </div>
       <div className="grid grid-cols-7 gap-y-1 text-center">

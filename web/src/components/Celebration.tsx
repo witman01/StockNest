@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 import { LogoMark } from "./Logo";
 import { Button, shareLink, useToast } from "./ui";
 
-const COLORS = ["#F2B34A", "#FFFFFF", "#8FB8D8", "#CFE6DC", "#4E8F86", "#F6CF86", "#FCEFD3", "#9CCBB7"];
+const COLORS = ["#548CFF", "#FFFFFF", "#B9CEFF", "#1F4FD1", "#050505", "#DCE7FF"];
 
 type Props = {
   open: boolean;
@@ -60,7 +60,7 @@ export function Celebration({ open, onClose, steps, title, subtitle, children, s
         <div
           role="dialog" aria-modal="true" aria-label="Celebration" data-theme="light"
           className="cel-in fixed inset-0 z-[100] overflow-y-auto text-ink"
-          style={{ background: "var(--celebrate-bg, radial-gradient(120% 80% at 50% 0%, #17705A 0%, #0C513F 55%, #083B2E 100%))" }}
+          style={{ background: "radial-gradient(120% 80% at 50% 0%, #3D6FEA 0%, #1F4FD1 55%, #12348F 100%)" }}
         >
           <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-[2] h-full w-full" />
           <button onClick={onClose} aria-label="Close" className="fixed right-3.5 top-3.5 z-[3] grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white hover:bg-white/25">

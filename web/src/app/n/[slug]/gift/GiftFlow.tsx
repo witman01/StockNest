@@ -30,7 +30,7 @@ const fmtDay = (d: Date | string) => new Date(d).toLocaleDateString(undefined, {
 type Pay = "email" | "wallet";
 type Phase = "idle" | "signing" | "executing";
 
-const inputCls = "w-full rounded-[10px] border-2 border-line bg-paper px-3.5 py-3 text-base outline-none transition focus:border-forest";
+const inputCls = "w-full rounded-[3px] border border-[#CDD2DC] bg-paper px-3.5 py-3 text-base outline-none transition focus:border-ink focus:shadow-[0_0_0_3px_#D3E1FF]";
 
 export function GiftFlow({ nest }: { nest: PublicNest }) {
   const router = useRouter();
@@ -184,7 +184,7 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
         <div className="mb-4 flex items-center gap-2">
           <button onClick={back} className="inline-flex h-11 items-center gap-1 px-1 font-semibold text-forest"><ArrowLeft size={18} />Back</button>
           <div className="flex-1 text-center">
-            <div className="text-xs font-bold uppercase tracking-[.06em] text-ink-2">Step {step} of 4</div>
+            <div className="mono-label text-ink-2">Step {step} of 4</div>
             <div className="mt-1.5 flex justify-center gap-1.5">{[1, 2, 3, 4].map((i) => <i key={i} className={clsx("h-1.5 w-7 rounded-full transition-colors", i <= step ? "bg-forest" : "bg-sand")} />)}</div>
           </div>
           <span className="w-[72px]" />
@@ -206,10 +206,10 @@ export function GiftFlow({ nest }: { nest: PublicNest }) {
             {step === 1 && (
               <div>
                 <h2 className="font-display text-[26px] font-semibold leading-tight">Which stock would you like to gift {kid}?</h2>
-                <div className="my-4 grid grid-cols-2 rounded-full bg-sand p-1">
+                <div className="my-4 grid grid-cols-2 border border-line bg-sand p-1">
                   {(["buy", "own"] as const).map((m) => (
                     <button key={m} onClick={() => selectMode(m)} disabled={m === "own" && onchainNest}
-                      className={clsx("rounded-full px-2 py-2.5 text-[15px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50", mode === m ? "bg-paper text-forest shadow-soft" : "text-ink-2")}>
+                      className={clsx("px-2 py-2.5 text-[15px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50", mode === m ? "border border-ink bg-paper text-ink" : "text-ink-2")}>
                       {m === "buy" ? "Buy with USDC" : onchainNest ? "Stock I own (soon)" : "Gift stock I own"}
                     </button>
                   ))}
