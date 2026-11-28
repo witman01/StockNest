@@ -216,7 +216,7 @@ export default function CreatePage() {
             )}
             {!photo || !showPhoto ? (
               <div className="mt-3 flex flex-wrap items-center gap-2.5">
-                <span className="mr-1 text-sm text-ink-3">{photo ? "Shown instead:" : "Or pick one:"}</span>
+                <span className="mr-1 text-sm text-ink-3 max-sm:basis-full">{photo ? "Shown instead:" : "Or pick one:"}</span>
                 {AVATAR_KINDS.map((k) => (
                   <button key={k} type="button" onClick={() => setAvatar(k)} aria-label={`${k} avatar`} aria-pressed={avatar === k}
                     className={clsx("rounded-full border-[3px] p-0 transition", avatar === k ? "scale-105 border-forest" : "border-transparent opacity-80 hover:opacity-100")}>

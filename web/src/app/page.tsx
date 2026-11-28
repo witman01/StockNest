@@ -36,9 +36,9 @@ export default function Home() {
             <p className="rise mt-6 max-w-[44ch] text-[15px] leading-relaxed text-ink-2 md:text-base" style={d(520)}>
               Grandma picks Apple, an uncle picks NVIDIA. Each gift becomes a real tokenized share in your child&apos;s nest on Base, with their message attached.
             </p>
-            <div className="rise mt-7 flex flex-wrap gap-2.5" style={d(620)}>
-              <Button href="/create">Start a nest <span className="arr">→</span></Button>
-              <Button href="/n/amelia" variant="secondary">See an example</Button>
+            <div className="rise mt-7 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap" style={d(620)}>
+              <Button href="/create" className="max-sm:w-full">Start a nest <span className="arr">→</span></Button>
+              <Button href="/n/amelia" variant="secondary" className="max-sm:w-full">See an example</Button>
             </div>
           </div>
 

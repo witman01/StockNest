@@ -13,9 +13,9 @@ export function SiteHeader() {
           <Link href="/" aria-label="StockNest home"><Logo /></Link>
           <DynamicIsland className="hidden w-[300px]! xl:block" />
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2 sm:gap-6">
           <NavMenu />
-          <Button href="/create" size="sm" className="max-[380px]:px-3!">Start a nest <span className="arr">→</span></Button>
+          <Button href="/create" size="sm" className="max-[400px]:px-3!">Start<span className="-ml-0.5 max-[359px]:hidden">a nest</span> <span className="arr max-[400px]:hidden">→</span></Button>
         </div>
       </div>
       <div className="flex justify-center px-4 pb-2.5 xl:hidden"><DynamicIsland /></div>
