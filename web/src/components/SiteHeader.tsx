@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DynamicIsland } from "./DynamicIsland";
 import { Logo } from "./Logo";
 import { NavMenu } from "./NavMenu";
 import { NAV } from "./nav";
@@ -8,12 +9,16 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-paper/90 backdrop-blur-md">
       <div className="relative mx-auto flex h-[64px] max-w-[1180px] items-center justify-between gap-4 px-4 md:px-8">
-        <Link href="/" aria-label="StockNest home"><Logo /></Link>
+        <div className="flex items-center gap-6">
+          <Link href="/" aria-label="StockNest home"><Logo /></Link>
+          <DynamicIsland className="hidden w-[300px]! xl:block" />
+        </div>
         <div className="flex items-center gap-6">
           <NavMenu />
           <Button href="/create" size="sm" className="max-[380px]:px-3!">Start a nest <span className="arr">→</span></Button>
         </div>
       </div>
+      <div className="flex justify-center px-4 pb-2.5 xl:hidden"><DynamicIsland /></div>
     </header>
   );
 }

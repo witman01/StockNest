@@ -1,5 +1,6 @@
 import { ArrowRightLeft, CalendarHeart, Lock, MessageCircleHeart, ShieldCheck, Sprout } from "lucide-react";
 import { DitherMountain } from "@/components/DitherMountain";
+import { HowItWorksDiagram } from "@/components/HowItWorksDiagram";
 import { StockLogo } from "@/components/StockLogo";
 import { ChildAvatar } from "@/components/ChildAvatar";
 import { CountUp } from "@/components/CountUp";
@@ -9,8 +10,6 @@ import { SEED_NESTS, nestTotals } from "@/lib/nests";
 import { STOCKS, stockBy } from "@/lib/stocks";
 import { shares, usd } from "@/lib/format";
 
-/** Corner "+" marks on a framed block, like a technical drawing. */
-const Plus = ({ className }: { className: string }) => <span aria-hidden className={`pointer-events-none absolute font-mono text-[15px] leading-none text-ink ${className}`}>+</span>;
 const d = (ms: number) => ({ animationDelay: `${ms}ms` });
 const rd = (ms: number) => ({ "--d": `${ms}ms` }) as React.CSSProperties;
 
@@ -22,9 +21,8 @@ export default function Home() {
     <>
       {/* ---------------- HERO ---------------- */}
       <section className="mx-auto max-w-[1180px] px-4 md:px-8">
-        <div className="relative border-x border-line">
-          <Plus className="-bottom-[8px] -left-[5px]" /><Plus className="-bottom-[8px] -right-[5px]" />
-          <div className="px-5 pb-2 pt-12 md:px-10 md:pt-16">
+        <div className="relative">
+          <div className="pb-2 pt-12 md:pt-16">
             <span className="rise mono-label inline-flex items-center gap-2 border border-line px-2.5 py-1.5 text-ink-2" style={d(0)}>
               <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#548CFF] opacity-60" /><span className="relative h-2 w-2 rounded-full bg-[#1F4FD1]" /></span>
               Live on Base Sepolia
@@ -48,8 +46,8 @@ export default function Home() {
 
           {/* the cornflower mountain, with stocks bouncing along the ridge */}
           <div className="relative mt-4">
-            <DitherMountain className="h-[300px] w-full sm:h-[360px] lg:h-[440px]" />
-            <div className="pop-in absolute left-4 top-4 hidden max-w-[260px] sm:block md:left-10" style={d(1500)}>
+            <DitherMountain className="h-[300px] w-full border-b border-line sm:h-[360px] lg:h-[440px]" />
+            <div className="pop-in absolute left-0 top-4 hidden max-w-[260px] sm:block" style={d(1500)}>
               <div className="float-bob border border-ink bg-paper p-3 text-[13px]">
                 <div className="flex items-center gap-2.5">
                   <StockLogo ticker="AAPL" size={34} />
@@ -58,7 +56,7 @@ export default function Home() {
                 <p className="mt-2 text-ink-2">&ldquo;Own a little piece of the future, my darling.&rdquo;</p>
               </div>
             </div>
-            <div className="pop-in absolute bottom-5 right-4 md:right-10" style={d(1800)}>
+            <div className="pop-in absolute bottom-5 right-0" style={d(1800)}>
               <div className="float-bob border border-ink bg-paper p-3 text-[13px]" style={d(-2500)}>
                 <div className="flex items-center gap-2"><ChildAvatar kind="amelia" size={26} ring={false} /><b>{amelia.nestName}</b></div>
                 <AllocationBar holdings={t.holdings} className="my-2 w-[200px]" />
@@ -87,9 +85,15 @@ export default function Home() {
 
       {/* ---------------- HOW IT WORKS ---------------- */}
       <section id="how" className="mx-auto max-w-[1180px] scroll-mt-20 px-4 md:px-8">
-        <div className="reveal border-b border-line py-14 md:py-20">
-          <span className="mono-label text-forest">How it works</span>
-          <h2 className="font-display mt-3 max-w-[18ch] text-[32px] font-semibold leading-[1.02] text-balance md:text-[48px]">Gifting a stock should feel like <em>sending a card.</em></h2>
+        <div className="grid items-center gap-10 border-b border-line py-14 md:py-20 lg:grid-cols-[.9fr_1.1fr] lg:gap-14">
+          <div className="reveal">
+            <span className="mono-label text-forest">How it works</span>
+            <h2 className="font-display mt-3 max-w-[16ch] text-[32px] font-semibold leading-[1.02] text-balance md:text-[48px]">Gifting a stock should feel like <em>sending a card.</em></h2>
+            <p className="mt-5 max-w-[42ch] leading-relaxed text-ink-2">Amelia&apos;s parents share one link. Grandma, Uncle Tobi and Auntie Kemi each pick a stock. Every gift lands in Amelia&apos;s nest and opens on her birthday.</p>
+          </div>
+          <div className="reveal" style={rd(150)}>
+            <HowItWorksDiagram className="block h-auto w-full" />
+          </div>
         </div>
         <div className="grid border-b border-line md:grid-cols-3">
           {[
